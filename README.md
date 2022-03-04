@@ -96,7 +96,7 @@ A : A 'a' | 'ba';
 
 4)G({a,b}, {S,A,B,T}, P, S) \
 P: \
-S: T | TS | ASB | BSA \
+S: T | TS | ASB | BSA | ASBS | BSAS \
 T: BA | AB \
 A: 'a' \
 B: 'b'
