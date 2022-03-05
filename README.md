@@ -127,4 +127,20 @@ b)
 https://regexr.com/6gkue  <-- Все тесты переключены в Match Full
 
 
-7.SOON
+### 7. Для регулярных выражений из предыдущего задания постройте конечные автоматы. Изобразите их в виде графа.
+
+1.
+
+<b>Ответ:</b>
+
+![reg1_v2](https://user-images.githubusercontent.com/60806892/156885008-bebc0802-d519-45ad-b072-cfb7bb02c2dc.svg)
+
+2.
+
+<b>Ответ:</b>
+
+![reg2](https://user-images.githubusercontent.com/60806892/156885055-95249cea-986a-44f9-8173-66b78bef1208.svg)
+
+
+
+
