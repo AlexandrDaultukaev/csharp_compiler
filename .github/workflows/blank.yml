@@ -27,8 +27,8 @@ jobs:
       - name: Cmake 
         run: mkdir build && cd build && cmake ..
         
-      - name: Cmake build
-        run: cmake --build .
+      - name: Build
+        run: cd build && cmake --build .
         
       - name: Run tests
         run: cd bin && ./lexer_tests
