@@ -3,6 +3,9 @@ compilers-1-AlexandrDaultukaev created by GitHub Classroom
 
 ### ИВ-921 Даултукаев Александр.
 
+### Lab 2.
+Лексер для языка C#
+
 ### 1. Дана грамматика. Постройте вывод заданной цепочки.
 a) S : T | T '+' S | T '-' S; \
    T : F | F '*' T; \
