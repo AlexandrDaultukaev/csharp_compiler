@@ -16,7 +16,7 @@ compilers-1-AlexandrDaultukaev created by GitHub Classroom
 Сборка грамматики:
 (В корне репозитория)
 ```
-chmod +x install_grammar.sh && ./install_grammar
+chmod +x install_grammar.sh && ./install_grammar.sh
 ```
 
 Сборка проекта:
