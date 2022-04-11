@@ -6,6 +6,43 @@ compilers-1-AlexandrDaultukaev created by GitHub Classroom
 ### Lab 2.
 Лексер для языка C#
 
+Для запуска необходимо:
+* Склонировать этот репозиторий
+* Установить Open JDK 7(или выше)
+* Установить Antlr 4.9
+* Установить Cmake 3
+* GNU Make 4.3
+
+Сборка грамматики:
+(В корне репозитория)
+```
+chmod +x install_grammar.sh && ./install_grammar
+```
+
+Сборка проекта:
+(В корне репозитория)
+```
+mkdir build && cd build && cmake .. && cmake --build .
+```
+
+Опции для запуска: \
+``--dump-tokens`` выводит все токены в терминал в формате: \
+``Loc=<строчка, столбец> имя токена 'значение токена'`` \
+Пример:
+```
+Loc=<29, 48> ZERO '0'
+Loc=<29, 49> RRP ')'
+Loc=<29, 50> SEMICOLON ';'
+Loc=<29, 52> ID 'i'
+Loc=<29, 53> UNARYMATHEXP '++'
+```
+
+Запуск проекта: \
+Перейти в папку `build/bin` и запустить проект с ключом `--dump-tokens` с указанием любого файла, лежащего в `examples`:
+```
+cd build/bin && ./app --dump-tokens ../../examples/min.cs
+```
+
 ### 1. Дана грамматика. Постройте вывод заданной цепочки.
 a) S : T | T '+' S | T '-' S; \
    T : F | F '*' T; \
