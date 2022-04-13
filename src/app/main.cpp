@@ -10,11 +10,24 @@
 *  /build/bin$ ./app --dump-tokens ../../examples/(min\nod\substr).cs
 */
 
+#define VERSION "0.0.1"
+
 int main (int argc, const char * argv []) {
     CLI::App app;
     std::string filepath;
-    app.add_option("--dump-tokens", filepath, "Dump func");
+    bool dump_tokens_key = false;
+    bool version_key = false;
+    
+    app.add_flag("--dump-tokens", dump_tokens_key, "Dump func");
+    app.add_flag("--version", version_key, "Version func");
+    auto fileflag = app.add_option("-f, --file", filepath, "Filepath");
+    fileflag->needs(fileflag);
     CLI11_PARSE(app, argc, argv);
-    cs_lexer::dump_tokens(filepath);
+    if(version_key)
+    {
+        std::cout << VERSION << '\n';
+    }
+    cs_lexer::dump_tokens(filepath, dump_tokens_key);
+    
     return 0;
 }
