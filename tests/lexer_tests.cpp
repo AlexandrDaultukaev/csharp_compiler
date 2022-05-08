@@ -1,4 +1,4 @@
-#include "lexer/lexer.hpp"
+#include "parser/parser.hpp"
 #include <string>
 #include <vector>
 #include <gtest/gtest.h>
@@ -32,8 +32,8 @@ TEST(LexerSuite, TokenTest)
 {
     const std::string testfile = "test1.cs";
     cs_lexer::tokens_array tkn_arr = cs_lexer::dump_tokens(path+testfile, 0);
-    std::vector<std::string> token_strs = {"static", "void", "Main", "(", "string", "[", "]", "args", ")", "{", "int", "[", ",", "]", "array", "=", "new", "int", "[", "5", ",", "5", "]", ";", "InitializeArray", "(", "array", ")", ";", "Console", ".", "WriteLine", "(", ")", ";", "Console", ".", "WriteLine", "(", "\"", "Min", "Element", "in", "array", ":", "{", "0", "}", "\"", ",", "MinElement", "(", "array", ")", ")", ";", "Console", ".", "ReadLine", "(", ")", ";", "}"};
-    std::vector<std::string> token_names = {"KEYWORD", "KEYWORD", "ID", "RLP", "VAR", "SLP", "SRP", "ID", "RRP", "CLB", "VAR", "SLP", "COMMA", "SRP", "ID", "ASSIGN", "KEYWORD", "VAR", "SLP", "NUMBER", "COMMA", "NUMBER", "SRP", "SEMICOLON", "ID", "RLP", "ID", "RRP", "SEMICOLON", "ID", "DOT", "ID", "RLP", "RRP", "SEMICOLON", "ID", "DOT", "ID", "RLP", "DQUOTES", "ID", "ID", "KEYWORD", "ID", "COLON", "CLB", "ZERO", "CRB", "DQUOTES", "COMMA", "ID", "RLP", "ID", "RRP", "RRP", "SEMICOLON", "ID", "DOT", "ID", "RLP", "RRP", "SEMICOLON", "CRB"};
+    std::vector<std::string> token_strs = {"static", "void", "Main", "(", "string", "[", "]", "args", ")", "{", "int", "[", ",", "]", "array", "=", "new", "int", "[", "5", ",", "5", "]", ";", "InitializeArray", "(", "array", ")", ";", "Console.WriteLine", "(", ")", ";", "Console.WriteLine", "(", "\"", "Min", "Element", "in", "array", ":", "{", "0", "}", "\"", ",", "MinElement", "(", "array", ")", ")", ";", "Console.ReadLine", "(", ")", ";", "}"};
+    std::vector<std::string> token_names = {"KEYWORD", "KEYWORD", "ID", "RLP", "VAR", "SLP", "SRP", "ID", "RRP", "CLB", "VAR", "SLP", "COMMA", "SRP", "ID", "ASSIGN", "KEYWORD", "VAR", "SLP", "NUMBER", "COMMA", "NUMBER", "SRP", "SEMICOLON", "ID", "RLP", "ID", "RRP", "SEMICOLON", "ID", "RLP", "RRP", "SEMICOLON", "ID", "RLP", "DQUOTES", "ID", "ID", "KEYWORD", "ID", "COLON", "CLB", "NUMBER", "CRB", "DQUOTES", "COMMA", "ID", "RLP", "ID", "RRP", "RRP", "SEMICOLON", "ID", "RLP", "RRP", "SEMICOLON", "CRB"};
     for(std::size_t i = 0; i < token_names.size(); i++)
     {
         EXPECT_EQ(token_strs[i], tkn_arr[i].get_token_str());

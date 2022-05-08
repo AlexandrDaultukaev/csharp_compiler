@@ -93,12 +93,13 @@ STRING: 'string' | 'System.String';
 IF: 'if';
 ELSE: 'else';
 FOR: 'for';
-ID: SYMBOL (SYMBOL | DIGIT)*;
+ID: SYMBOL (SYMBOL | DIGIT | '.' SYMBOL)*;
 fragment SYMBOL: [A-Za-z];
 fragment DIGIT: [0-9];
 
 ASSIGN: '=';
-OP: PLUS | ASSIGN | MINUS | EQ | LESS | MR | PERS;
+BINARY_OP: PLUS | MINUS | PERS | DIVISION;
+DIVISION: '/';
 PLUS: '+';
 MINUS: '-';
 PERS: '%';
@@ -118,23 +119,32 @@ COLON: ':';
 COMMA: ',';
 APOSTROPH: '\'';
 DQUOTES: '"';
-ZERO: '0';
-NUMBER: DIGITNOZERO (DIGIT)*;
-TEXT: [0-9A-Za-z];
+NUMBER: '0' | DIGITNOZERO (DIGIT)*;
+// NUMBER: DIGITNOZERO (DIGIT)*;
+
+TEXT: [0-9A-Za-z!?@#$%^&*.]+;
+
+UNIT: NUMBER | ID | DQUOTES (TEXT (' ' TEXT)*)? DQUOTES;
 
 fragment DIGITNOZERO: [1-9];
 
 UNARYMATHEXP: '++' | '--';
-
 WS: [ \r\t\n]+ -> skip;
+// start: (var_def_expr | func_def_expr)*; var_def_expr: VAR ID ASSIGN NUMBER SEMICOLON;
+// func_def_expr: VAR ID RLP RRP (CLB var_def_expr CRB | SEMICOLON);
 
-start: 'hello';
+// func() ; a+b ; a++ ; a=b ; if/while/for ; return ;
 
-//
-// kw_expr: KEYWORD+ ID? (DOT ID)* in_parent? SEMICOLON?; array: VAR SLP (ID | NUMBER)? SRP ID
-// SEMICOLON?; var: VAR ID (ASSIGN (NUMBER | func | ID | ZERO))? SEMICOLON?; ch_var: ( (ID
-// UNARYMATHEXP) | (UNARYMATHEXP ID) | (ID ASSIGN (ID | NUMBER | ZERO) OP? (ID | NUMBER)) )
-// SEMICOLON?; in_parent: RLP (array | var | func | ID | NUMBER | ZERO | TEXT)* RRP SEMICOLON?;
-// func: ID (DOT ID)* in_parent; if_expr: IF RLP ID OP (ID | NUMBER) (OP (ID | NUMBER | ZERO))? RRP;
-// for_expr: FOR RLP var SEMICOLON? ID OP (ID | NUMBER | ZERO) SEMICOLON? ch_var RRP; // FOR RLP VAR
-// ID ASSIGN ID SEMICOLON ID OP ZERO SEMICOLON ID UNARYMATHEXP RRP; clb: CLB; crb: CRB;
+program: expressions* EOF;
+expressions: (func_def | var_def);
+var_def: VAR ID (SEMICOLON | ASSIGN NUMBER SEMICOLON);
+func_def: (KEYWORD* VAR | VAR) ID RLP RRP ( SEMICOLON | scope);
+scope: CLB statement* CRB;
+statement: func_call SEMICOLON;
+func_call: ID RLP args RRP;
+args: (UNIT (COMMA UNIT)*)?;
+
+// type a = number rvalue: NUMBER+ | ZERO | TEXT |
+
+// int a = 12; string a = "Hello"; int a = c + b + ... + n; int a = c + 4; int a = c + b; int a =
+// b++;

@@ -20,7 +20,8 @@ target_include_directories(
 target_link_libraries(
   lexer_tests
     antlr4_cpp_runtime
-    lexerlib
+    parserlib
+    gram
     gtest_main
     
 )

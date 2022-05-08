@@ -2,10 +2,12 @@
 
 #include "grammar/CsharpLexer.h"
 #include <string>
+#include "ast/ast.hpp"
 #include <vector>
 #include "antlr4-runtime.h"
 
 namespace cs_lexer { 
+    
         struct token {
         int x;
         int y;
@@ -17,6 +19,7 @@ namespace cs_lexer {
         std::string get_token_name() {return token_name;}
         std::string get_token_str() {return token_str;}
     };
+
         class tokens_array {
         std::vector<token> tokens;
     public:
@@ -27,4 +30,9 @@ namespace cs_lexer {
         }
     };
     tokens_array dump_tokens(std::string filepath, int print_key=1);
+
+void parse_test(std::string filepath);
+
+
+
 } // namespace cs_lexer

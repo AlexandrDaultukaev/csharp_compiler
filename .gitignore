@@ -5,3 +5,4 @@ run.sh
 /src/app/grammar/*.interp
 /src/app/grammar/*.tokens
 .antlr
+todo.txt
