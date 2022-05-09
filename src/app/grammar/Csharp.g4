@@ -123,8 +123,9 @@ DQUOTES: '"';
 NUMBER: '0' | DIGITNOZERO (DIGIT)*;
 // NUMBER: DIGITNOZERO (DIGIT)*;
 
-TEXT: [0-9A-Za-z!?@#$%^&*.]+;
-
+TEXT: DQUOTES [0-9A-Za-z!?@#$%^&*.]+ DQUOTES;
+CHAR: APOSTROPH [0-9A-Za-z!?@#$%^&*.] APOSTROPH;
+FLOAT_NUMBER: NUMBER DOT NUMBER;
 UNIT: NUMBER | ID | DQUOTES (TEXT (' ' TEXT)*)? DQUOTES;
 
 fragment DIGITNOZERO: [1-9];
@@ -140,17 +141,18 @@ program: expressions* EOF;
 expressions: (func_def | assign_statement);
 assign_statement: (ID | var_def) (
 		//TODO: assign type
-		ASSIGN (ID | string_literal | integer_literal) (
-			BINARY_OP (ID | string_literal | integer_literal)
+		ASSIGN (ID | literal | literal) (
+			BINARY_OP (ID | literal | literal)
 		)?
 	)? SEMICOLON;
-// string_literal: TEXT; integer_literal: NUMBER;
+literal: TEXT | NUMBER | CHAR | FLOAT_NUMBER;
 var_def: VAR ID;
 func_def: (KEYWORD* VAR | VAR) ID RLP RRP (SEMICOLON | scope);
 scope: CLB (statement)* CRB;
 statement: (func_call SEMICOLON) | assign_statement;
 func_call: ID RLP args RRP;
-args: (UNIT (COMMA UNIT)*)?; //TODO: UNIT to ID or NUMBER or STR
+args: (UNIT (COMMA UNIT)*)?;
+//TODO: UNIT to ID or NUMBER or STR
 
 // type a = number rvalue: NUMBER+ | ZERO | TEXT |
 

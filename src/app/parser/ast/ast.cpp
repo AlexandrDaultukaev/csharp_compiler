@@ -59,6 +59,10 @@ antlrcpp::Any Visitor::visitArgs(CsharpParser::ArgsContext *context) {
     return antlrcpp::Any(context);
 }
 
+antlrcpp::Any Visitor::visitLiteral(CsharpParser::LiteralContext *context) {
+    return antlrcpp::Any(context);
+}
+
 /* ASTProgram */
 
 void ASTProgram::append_child(ASTNode* node) { m_children.push_back(node); }
@@ -226,6 +230,8 @@ void VisitorInitialiser::visit(ASTAssign& node)
     ASTVariable* r2 = new ASTVariable;
     bool is_r2_set = false;
     int ind = 0;
+    int lit_ind = 0;
+    // Lvalue
     if(ctx->var_def() == nullptr)
     {
         l->var_name() = ctx->ID(ind)->getText();
@@ -234,18 +240,64 @@ void VisitorInitialiser::visit(ASTAssign& node)
     } else {
         l->var_name() = ctx->var_def()->ID()->getText();
     }
-    r1->var_name() = ctx->ID(ind)->getText();
-    ind++;
+
+    // Rvalue1
+    if(ctx->literal(lit_ind) != nullptr)
+    {
+        if(ctx->literal(lit_ind)->TEXT() != nullptr) {
+            r1->var_name() = ctx->literal(lit_ind)->TEXT()->getText();
+            r1->set_literal(true);
+            r1->var_type() = "TEXT";
+        } else if(ctx->literal(lit_ind)->NUMBER() != nullptr) {
+            r1->var_name() = ctx->literal(lit_ind)->NUMBER()->getText();
+            r1->set_literal(true);
+            r1->var_type() = "NUMBER";
+        } else if(ctx->literal(lit_ind)->FLOAT_NUMBER() != nullptr) {
+            r1->var_name() = ctx->literal(lit_ind)->FLOAT_NUMBER()->getText();
+            r1->set_literal(true);
+            r1->var_type() = "FLOAT_NUMBER";
+        } else if(ctx->literal(lit_ind)->CHAR() != nullptr) {
+            r1->var_name() = ctx->literal(lit_ind)->CHAR()->getText();
+            r1->set_literal(true);
+            r1->var_type() = "CHAR";
+        }
+        lit_ind++;
+    } else {
+        r1->var_name() = ctx->ID(ind)->getText();
+        ind++;
+    }
+
+    //Rvalue2
     if(ctx->ID(ind) != nullptr)
     {
         is_r2_set = true;
         r2->var_name() = ctx->ID(ind)->getText();
-        node.set_oper(ctx->BINARY_OP()->getText());
+    } else if(ctx->literal(lit_ind) != nullptr)
+    {
+        is_r2_set = true;
+        if(ctx->literal(lit_ind)->TEXT() != nullptr) {
+            r2->var_name() = ctx->literal(lit_ind)->TEXT()->getText();
+            r2->set_literal(true);
+            r2->var_type() = "TEXT";
+        } else if(ctx->literal(lit_ind)->NUMBER() != nullptr) {
+            r2->var_name() = ctx->literal(lit_ind)->NUMBER()->getText();
+            r2->set_literal(true);
+            r2->var_type() = "NUMBER";
+        } else if(ctx->literal(lit_ind)->FLOAT_NUMBER() != nullptr) {
+            r2->var_name() = ctx->literal(lit_ind)->FLOAT_NUMBER()->getText();
+            r2->set_literal(true);
+            r2->var_type() = "FLOAT_NUMBER";
+        } else if(ctx->literal(lit_ind)->CHAR() != nullptr) {
+            r2->var_name() = ctx->literal(lit_ind)->CHAR()->getText();
+            r2->set_literal(true);
+            r2->var_type() = "CHAR";
+        }
     }
+
     node.set_lvalue(l);
     node.set_rvalue1(r1);
     if(is_r2_set)
-        {node.set_rvalue2(r2);}
+        {node.set_oper(ctx->BINARY_OP()->getText()); node.set_rvalue2(r2);}
     else 
         {node.set_rvalue2(nullptr);}
 }
@@ -266,6 +318,8 @@ void VisitorInitialiser::visit(ASTFunction& node) {
 }
 
 void VisitorInitialiser::visit(ASTVariable& node) {
+
+    //TODO: If var == literal -> ERROR
     auto ctx = m_context.as<CsharpParser::Assign_statementContext*>();
     if(ctx->ID().size() < 1)
     {

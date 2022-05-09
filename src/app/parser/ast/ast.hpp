@@ -28,6 +28,7 @@ public:
     antlrcpp::Any visitScope(CsharpParser::ScopeContext *context) override;
     antlrcpp::Any visitFunc_call(CsharpParser::Func_callContext *context) override;
     antlrcpp::Any visitArgs(CsharpParser::ArgsContext *context) override;
+    antlrcpp::Any visitLiteral(CsharpParser::LiteralContext *context) override;
 
     //antlrcpp::Any visitArgs(CsharpParser::ArgsContext *context) override;
     
@@ -135,7 +136,10 @@ public:
 
 class ASTVariable: public ASTNode {
 private:
+    // m_var_name - NAME if var isn't literal, and VALUE if var is literal
     std::string m_var_name;
+    bool is_lit = false;
+    //TODO: literal: 'A', 'Hello', 12, 12.4
     std::string m_var_type;
 
 public:
@@ -143,7 +147,8 @@ public:
 
     std::string& var_name();
     std::string& var_type();
-
+    void set_literal(bool l) { is_lit = l;}
+    bool is_literal() {return is_lit;}
     void accept(Visitor& visitor) override;
 };
 
