@@ -22,6 +22,7 @@ int main (int argc, const char * argv []) {
     bool version_key = false;
     app.add_flag("--dump-tokens", dump_tokens_key, "Dump func");
     app.add_flag("--version", version_key, "Version func");
+    //TODO: --dump-ast
     auto fileflag = app.add_option("-f, --file", filepath, "Filepath");
     fileflag->needs(fileflag);
     CLI11_PARSE(app, argc, argv);

@@ -10,7 +10,6 @@ KEYWORD:
 	| 'catch'
 	| 'char'
 	| 'checked'
-	| 'class'
 	| 'const'
 	| 'continue'
 	| 'default'
@@ -63,6 +62,8 @@ KEYWORD:
 	| 'void'
 	| 'volatile'
 	| 'while';
+
+CLASS: 'class';
 
 VAR:
 	INT
@@ -136,13 +137,20 @@ WS: [ \r\t\n]+ -> skip;
 // func() ; a+b ; a++ ; a=b ; if/while/for ; return ;
 
 program: expressions* EOF;
-expressions: (func_def | var_def);
-var_def: VAR ID (SEMICOLON | ASSIGN NUMBER SEMICOLON);
-func_def: (KEYWORD* VAR | VAR) ID RLP RRP ( SEMICOLON | scope);
-scope: CLB statement* CRB;
-statement: func_call SEMICOLON;
+expressions: (func_def | assign_statement);
+assign_statement: (ID | var_def) (
+		//TODO: assign type
+		ASSIGN (ID | string_literal | integer_literal) (
+			BINARY_OP (ID | string_literal | integer_literal)
+		)?
+	)? SEMICOLON;
+// string_literal: TEXT; integer_literal: NUMBER;
+var_def: VAR ID;
+func_def: (KEYWORD* VAR | VAR) ID RLP RRP (SEMICOLON | scope);
+scope: CLB (statement)* CRB;
+statement: (func_call SEMICOLON) | assign_statement;
 func_call: ID RLP args RRP;
-args: (UNIT (COMMA UNIT)*)?;
+args: (UNIT (COMMA UNIT)*)?; //TODO: UNIT to ID or NUMBER or STR
 
 // type a = number rvalue: NUMBER+ | ZERO | TEXT |
 

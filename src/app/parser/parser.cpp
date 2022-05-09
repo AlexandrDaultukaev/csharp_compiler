@@ -66,6 +66,7 @@ void parse_test(std::string filepath) {
 
     ast->accept(visitor_init);
     ast->accept(visitor_print);
+    delete ast;
 }
 
 }

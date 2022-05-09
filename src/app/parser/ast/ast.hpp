@@ -13,6 +13,7 @@ class ASTVariable;
 class ASTFuncCall;
 class ASTScope;
 class ASTArgs;
+class ASTAssign;
 
 class Visitor: public CsharpVisitor {
 public:
@@ -22,6 +23,7 @@ public:
     antlrcpp::Any visitVar_def(CsharpParser::Var_defContext* context) override;
     antlrcpp::Any visitFunc_def(CsharpParser::Func_defContext* context) override;
 
+    antlrcpp::Any visitAssign_statement(CsharpParser::Assign_statementContext *context) override;
     antlrcpp::Any visitStatement(CsharpParser::StatementContext *context) override;
     antlrcpp::Any visitScope(CsharpParser::ScopeContext *context) override;
     antlrcpp::Any visitFunc_call(CsharpParser::Func_callContext *context) override;
@@ -35,6 +37,7 @@ public:
     virtual void visit(ASTFuncCall& node) = 0;
     virtual void visit(ASTScope& node) = 0;
     virtual void visit(ASTArgs& node) = 0;
+    virtual void visit(ASTAssign& node) = 0;
 
 };
 
@@ -51,6 +54,63 @@ public:
     virtual void  accept(Visitor& visitor) = 0;
 };
 
+class ASTArgs : public ASTNode {
+private:
+    std::string arg;
+public:
+    ASTArgs() = default;
+    std::string get_arg() { return arg; }
+    void set_arg(std::string a) {arg = a;}
+    void accept(Visitor& visitor) override;
+    ~ASTArgs() = default;
+};
+
+class ASTScope : public ASTNode {
+private:
+    std::vector<ASTNode*> m_statements;
+    std::string scope_name;
+public:
+    ASTScope() = default;
+
+    void           append_statement(ASTNode* node);
+    ASTNode* get_statement(std::size_t i);
+    //NOTE:
+    std::string get_scope_name() {return scope_name;}
+    void set_scope_name(std::string sn) {scope_name = sn;}
+    std::vector<ASTNode*> get_statements();
+
+    void accept(Visitor& visitor) override;
+    ~ASTScope()
+    {
+        for(std::size_t i = 0; i < m_statements.size(); i++)
+        {
+            delete m_statements[i];
+        }
+    }
+};
+
+class ASTAssign: public ASTNode
+{
+private:
+    ASTVariable* lvalue = nullptr;
+    ASTVariable* rvalue1 = nullptr;
+    ASTVariable* rvalue2 = nullptr;
+    std::string oper;
+public:
+    ASTAssign() = default;
+    void set_lvalue(ASTVariable* a) {lvalue = a;}
+    void set_rvalue1(ASTVariable* a) {rvalue1 = a;}
+    void set_rvalue2(ASTVariable* a) {rvalue2 = a;}
+    void set_oper(std::string o) { oper = o; }
+
+    ASTVariable* get_lvalue() { return lvalue; }
+    ASTVariable* get_rvalue1() { return rvalue1; }
+    ASTVariable* get_rvalue2() { return rvalue2; }
+    std::string get_oper() { return oper; }
+
+    void accept(Visitor& visitor) override;
+};
+
 class ASTProgram: public ASTNode {
 private:
     std::vector<ASTNode*> m_children;
@@ -64,6 +124,13 @@ public:
     std::vector<ASTNode*> get_children();
 
     void accept(Visitor& visitor) override;
+    ~ASTProgram()
+    {
+        for(std::size_t i = 0; i < m_children.size(); i++)
+        {
+            delete m_children[i];
+        }
+    }
 };
 
 class ASTVariable: public ASTNode {
@@ -96,6 +163,14 @@ public:
     void append_arg(ASTArgs* a) {args.push_back(a);}
 
     void accept(Visitor& visitor) override;
+    ~ASTFuncCall()
+    {
+        for(std::size_t i = 0; i < args.size(); i++)
+        {
+            delete args[i];
+        }
+        
+    }
 };
 
 
@@ -106,9 +181,6 @@ private:
     std::string m_func_name;
     std::string m_return_type;
     ASTScope* m_scope = nullptr;
-    /* Children */
-    //std::vector<ASTVariable> m_arguments;
-    //ASTExpression            m_expression;
 
 public:
     ASTFunction() = default;
@@ -124,34 +196,12 @@ public:
         return m_scope;
     }
     void accept(Visitor& visitor) override;
+    ~ASTFunction()
+    {
+        delete m_scope;
+    }
 };
 
-class ASTScope : public ASTNode {
-private:
-    std::vector<ASTNode*> m_statements;
-    std::string scope_name;
-public:
-    ASTScope() = default;
-
-    void           append_statement(ASTNode* node);
-    ASTNode* get_statement(std::size_t i);
-    //NOTE:
-    std::string get_scope_name() {return scope_name;}
-    void set_scope_name(std::string sn) {scope_name = sn;}
-    std::vector<ASTNode*> get_statements();
-
-    void accept(Visitor& visitor) override;
-
-};
-
-class ASTArgs : public ASTNode {
-private:
-    std::string arg;
-public:
-    std::string get_arg() { return arg; }
-    void set_arg(std::string a) {arg = a;}
-    void accept(Visitor& visitor) override;
-};
 
 /* Visitor Implementation */
 class VisitorInitialiser: public Visitor {
@@ -167,6 +217,7 @@ public:
     void visit(ASTFuncCall& node) override;
     void visit(ASTScope& node) override;
     void visit(ASTArgs& node) override;
+    void visit(ASTAssign& node) override;
     
 };
 
@@ -175,11 +226,12 @@ private:
     std::ostream& stream;
 public:
     VisitorTraverse(std::ostream& os);
-
+    void set_indent(std::size_t spaces) {for(std::size_t i = 0; i < spaces; i++) { stream << " "; }}
     void visit(ASTProgram& node) override;
     void visit(ASTFunction& node) override;
     void visit(ASTVariable& node) override;
     void visit(ASTFuncCall& node) override;
     void visit(ASTScope& node) override;
     void visit(ASTArgs& node) override;
+    void visit(ASTAssign& node) override;
 };

@@ -11,8 +11,8 @@ antlrcpp::Any Visitor::visitExpressions(CsharpParser::ExpressionsContext* contex
         return antlrcpp::Any(context->func_def());
     }
 
-    if (context->var_def()) {
-        return antlrcpp::Any(context->var_def());
+    if (context->assign_statement()) {
+        return antlrcpp::Any(context->assign_statement());
     }
 
     return antlrcpp::Any(context);
@@ -22,10 +22,17 @@ antlrcpp::Any Visitor::visitStatement(CsharpParser::StatementContext *context) {
     if (context->func_call()) {
         return antlrcpp::Any(context->func_call());
     }
+    if (context->assign_statement()) {
+        return antlrcpp::Any(context->assign_statement());
+    }
     return antlrcpp::Any(context);
 }
 
 antlrcpp::Any Visitor::visitProgram(CsharpParser::ProgramContext *context) {
+    return antlrcpp::Any(context);
+}
+
+antlrcpp::Any Visitor::visitAssign_statement(CsharpParser::Assign_statementContext *context) {
     return antlrcpp::Any(context);
 }
 
@@ -60,6 +67,7 @@ const ASTNode* ASTProgram::get_child(std::size_t i) const { return m_children[i]
 std::vector<ASTNode*> ASTProgram::get_children() { return m_children; }
 
 void ASTProgram::accept(Visitor& visitor) { visitor.visit(*this); }
+void ASTAssign::accept(Visitor& visitor) { visitor.visit(*this); }
 
 /* ASTVariable */
 
@@ -101,27 +109,27 @@ void ASTFunction::accept(Visitor& visitor) { visitor.visit(*this); }
 
     void ASTScope::accept(Visitor& visitor) { visitor.visit(*this); }
 
-/* ASTArgs */
+
 void ASTArgs::accept(Visitor& visitor) { visitor.visit(*this); }
 
-/* Visitor Implementation */
+
 VisitorInitialiser::VisitorInitialiser(antlrcpp::Any context)
     : m_context(context) { }
 
 void VisitorInitialiser::visit(ASTProgram& node) {
     // std::vector<ASTNode*> children;
-
+    
     auto ctx = m_context.as<CsharpParser::ProgramContext*>();
     auto exprs = ctx->expressions();
 
-    ASTNode* child;
-
+    ASTNode* child = nullptr;
+    ASTNode* child2 = nullptr;
     for (unsigned int i = 0; i < exprs.size(); i++) {
 
         auto expr = visitExpressions(exprs[i]);
 
         if (expr.isNotNull()) {
-
+            // Check if statement is function call: "Console.Writeln("Hello!\n")"
             if (expr.is<CsharpParser::Func_defContext*>()) {
                 VisitorInitialiser visitor(expr.as<CsharpParser::Func_defContext*>());
                 
@@ -131,20 +139,34 @@ void VisitorInitialiser::visit(ASTProgram& node) {
                 node.append_child(child);
             }
 
-            if (expr.is<CsharpParser::Var_defContext*>()) {
-                VisitorInitialiser visitor(expr.as<CsharpParser::Var_defContext*>());
-
+            if (expr.is<CsharpParser::Assign_statementContext*>()) {
+ 
+                VisitorInitialiser visitor(expr.as<CsharpParser::Assign_statementContext*>());
+  
                 child = new ASTVariable;
+
                 child->accept(visitor);
 
-                node.append_child(child);
+                // Lock to add variable of undefined type
+                if(static_cast<ASTVariable*>(child)->var_type() != "")
+                    {node.append_child(child);}
+                
+                // Check if statement looks like "(int) a = b + (c)"
+                if(expr.as<CsharpParser::Assign_statementContext*>()->ASSIGN() != nullptr)
+                {
+                    
+                    child2 = new ASTAssign;
+                    child2->accept(visitor);
+                    node.append_child(child2);
+                }
+                
+                
             }
         }
     }
 }
 
 void VisitorInitialiser::visit(ASTScope& node) {
-    // std::vector<ASTNode*> children;
 
     auto ctx = m_context.as<CsharpParser::ScopeContext*>();
     auto exprs = ctx->statement();
@@ -165,23 +187,70 @@ void VisitorInitialiser::visit(ASTScope& node) {
 
                 node.append_statement(child);
             }
+            if (expr.is<CsharpParser::Assign_statementContext*>()) {
+                VisitorInitialiser visitor(expr.as<CsharpParser::Assign_statementContext*>());
+  
+                child = new ASTVariable;
+
+                child->accept(visitor);
+
+                // Lock to add variable of undefined type
+                if(static_cast<ASTVariable*>(child)->var_type() != "")
+                    {node.append_statement(child);}
+                
+                // Check if statement looks like "(int) a = b + (c)"
+                if(expr.as<CsharpParser::Assign_statementContext*>()->ASSIGN() != nullptr)
+                {
+                    ASTNode* child2 = nullptr;
+                    child2 = new ASTAssign;
+                    child2->accept(visitor);
+                    node.append_statement(child2);
+                }
+            }
         }
     }
 }
 
 void VisitorInitialiser::visit(ASTArgs& node) {
-    //NOTE:
+    //NOTE: Context for ASTArgs is certain argument
     auto ctx = m_context.as<antlr4::tree::TerminalNode*>();
-    // std::cout << node.get_arg();
-    node.set_arg(ctx->getText());
 
-    // auto ctx = m_context.as<CsharpParser::ArgsContext*>();
-    // node.set_arg(ctx->);
+    node.set_arg(ctx->getText());
 }
 
+void VisitorInitialiser::visit(ASTAssign& node)
+{
+    auto ctx = m_context.as<CsharpParser::Assign_statementContext*>();
+    ASTVariable* l = new ASTVariable;
+    ASTVariable* r1 = new ASTVariable;
+    ASTVariable* r2 = new ASTVariable;
+    bool is_r2_set = false;
+    int ind = 0;
+    if(ctx->var_def() == nullptr)
+    {
+        l->var_name() = ctx->ID(ind)->getText();
+        ind++;
+
+    } else {
+        l->var_name() = ctx->var_def()->ID()->getText();
+    }
+    r1->var_name() = ctx->ID(ind)->getText();
+    ind++;
+    if(ctx->ID(ind) != nullptr)
+    {
+        is_r2_set = true;
+        r2->var_name() = ctx->ID(ind)->getText();
+        node.set_oper(ctx->BINARY_OP()->getText());
+    }
+    node.set_lvalue(l);
+    node.set_rvalue1(r1);
+    if(is_r2_set)
+        {node.set_rvalue2(r2);}
+    else 
+        {node.set_rvalue2(nullptr);}
+}
 
 void VisitorInitialiser::visit(ASTFunction& node) {
-
     auto ctx = m_context.as<CsharpParser::Func_defContext*>();
     //NOTE:
     if(ctx->scope() != nullptr)
@@ -197,11 +266,19 @@ void VisitorInitialiser::visit(ASTFunction& node) {
 }
 
 void VisitorInitialiser::visit(ASTVariable& node) {
+    auto ctx = m_context.as<CsharpParser::Assign_statementContext*>();
+    if(ctx->ID().size() < 1)
+    {
+        node.var_name() = ctx->var_def()->ID()->getText();
+        node.var_type() = ctx->var_def()->VAR()->getText();
 
-    auto ctx = m_context.as<CsharpParser::Var_defContext*>();
-
-    node.var_name() = ctx->ID()->getText();
-    node.var_type() = ctx->VAR()->getText();
+    } else {
+        node.var_type() = "";
+        
+        node.var_name() = ctx->ID()[0]->getText();
+        
+    }
+    
 }
 
 void VisitorInitialiser::visit(ASTFuncCall& node) {
@@ -248,10 +325,7 @@ void VisitorTraverse::visit(ASTProgram& node) {
 }
 
 void VisitorTraverse::visit(ASTFunction& node) {
-    for(std::size_t i = 0; i < node.get_depth(); i++)
-    {
-        stream << " ";
-    }
+    set_indent(node.get_depth());
     stream << "<function name=\'"
        << node.func_name()
        << "\' return-type=\'"
@@ -268,10 +342,7 @@ void VisitorTraverse::visit(ASTFunction& node) {
 }
 
 void VisitorTraverse::visit(ASTVariable& node) {
-    for(std::size_t i = 0; i < node.get_depth(); i++)
-    {
-        stream << " ";
-    }
+    set_indent(node.get_depth());
     stream << "<variable name=\'"
        << node.var_name()
        << "\' type=\'"
@@ -279,8 +350,22 @@ void VisitorTraverse::visit(ASTVariable& node) {
        << "\'/>\n";
 }
 
+void VisitorTraverse::visit(ASTAssign& node)
+{
+    set_indent(node.get_depth());
+    stream << "<assign lhs=" << node.get_lvalue()->var_name()
+        << ", rhs=";
+    if(node.get_rvalue2() != nullptr)
+    {
+        stream << "(" << node.get_rvalue1()->var_name() << ", " << node.get_rvalue2()->var_name() << "), op=\'" << node.get_oper() << "\'/>\n";
+    } else {
+        stream << node.get_rvalue1()->var_name() << ", op=\'" << node.get_oper() << "\'/>\n";
+    }
+    
+}
+
 void VisitorTraverse::visit(ASTFuncCall& node) {
-    for(std::size_t i = 0; i < node.get_depth(); i++) { stream << " "; }
+    set_indent(node.get_depth());
     stream << "<call name=\'"
        << node.func_name() << "\', args=";
     for(std::size_t i = 0; i < node.get_args().size(); i++)
@@ -299,7 +384,7 @@ void VisitorTraverse::visit(ASTFuncCall& node) {
 
 void VisitorTraverse::visit(ASTScope& node) {
     //NOTE:
-    for(std::size_t i = 0; i < node.get_depth(); i++) { stream << " "; }
+    set_indent(node.get_depth());
     stream << "<scope " << "name=\'" << node.get_scope_name() << "\'>\n";
     VisitorTraverse visitor(stream);
     for(std::size_t i = 0; i < node.get_statements().size(); i++)
@@ -308,7 +393,7 @@ void VisitorTraverse::visit(ASTScope& node) {
         node.get_statement(i)->accept(visitor);
         node.decrease_depth();
     }
-    for(std::size_t i = 0; i < node.get_depth(); i++) { stream << " "; }
+    set_indent(node.get_depth());
     stream << "</scope>\n";
 }
 

@@ -1,6 +1,6 @@
-int func();
-int a = 4;
-float b;
 int main() { 
-    Console.Writeln("Hello World!");
+    float f;
+    f = a + b;
+    float f = a + b;
+    func("Hello World");
 }
