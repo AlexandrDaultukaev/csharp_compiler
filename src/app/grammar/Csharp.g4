@@ -8,7 +8,6 @@ KEYWORD:
 	| 'break'
 	| 'case'
 	| 'catch'
-	| 'char'
 	| 'checked'
 	| 'const'
 	| 'continue'
@@ -77,7 +76,7 @@ VAR:
 	| UINT
 	| LONG
 	| ULONG
-	| STRING;
+	| STRING | CHAR;
 
 INT: 'int' | 'System.Int32';
 FLOAT: 'float' | 'System.Single';
@@ -91,6 +90,8 @@ UINT: 'uint' | 'System.UInt32';
 LONG: 'long' | 'System.Int64';
 ULONG: 'ulong' | 'System.UInt64';
 STRING: 'string' | 'System.String';
+CHAR: 'char';
+
 IF: 'if';
 ELSE: 'else';
 FOR: 'for';
@@ -124,7 +125,7 @@ NUMBER: '0' | DIGITNOZERO (DIGIT)*;
 // NUMBER: DIGITNOZERO (DIGIT)*;
 
 TEXT: DQUOTES [0-9A-Za-z!?@#$%^&*.]+ DQUOTES;
-CHAR: APOSTROPH [0-9A-Za-z!?@#$%^&*.] APOSTROPH;
+CHARv: APOSTROPH [0-9A-Za-z!?@#$%^&*.] APOSTROPH;
 FLOAT_NUMBER: NUMBER DOT NUMBER;
 UNIT: NUMBER | ID | DQUOTES (TEXT (' ' TEXT)*)? DQUOTES;
 
@@ -145,7 +146,7 @@ assign_statement: (ID | var_def) (
 			BINARY_OP (ID | literal | literal)
 		)?
 	)? SEMICOLON;
-literal: TEXT | NUMBER | CHAR | FLOAT_NUMBER;
+literal: TEXT | NUMBER | CHARv | FLOAT_NUMBER;
 var_def: VAR ID;
 func_def: (KEYWORD* VAR | VAR) ID RLP RRP (SEMICOLON | scope);
 scope: CLB (statement)* CRB;

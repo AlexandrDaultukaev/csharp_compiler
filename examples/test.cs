@@ -1,5 +1,9 @@
 int main() { 
     float f;
+    float f = 10.1;
+    string s = "Hello";
+    char c = 'A';
+    int i = 10;
     f = 10 + "Hello";
     float d = 10.2 + 'G';
     float e = 'E' + 42.2;
