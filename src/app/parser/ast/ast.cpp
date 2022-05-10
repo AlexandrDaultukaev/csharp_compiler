@@ -55,14 +55,59 @@ antlrcpp::Any Visitor::visitFunc_call(CsharpParser::Func_callContext *context) {
 }
 
 antlrcpp::Any Visitor::visitArgs(CsharpParser::ArgsContext *context) {
-  if (context->UNIT().size()) {
-    return antlrcpp::Any(context->UNIT());
+  if (context->arg().size()) {
+    return antlrcpp::Any(context->arg());
   }
   return antlrcpp::Any(context);
 }
 
 antlrcpp::Any Visitor::visitLiteral(CsharpParser::LiteralContext *context) {
+    if(context->NUMBER()) {
+            return antlrcpp::Any(context->NUMBER());
+    }
+    if(context->FLOAT_NUMBER()) {
+            return antlrcpp::Any(context->FLOAT_NUMBER());
+    }
+    if(context->TEXT()) {
+            return antlrcpp::Any(context->TEXT());
+    }
+    if(context->CHARv()) {
+            return antlrcpp::Any(context->CHARv());
+    }
   return antlrcpp::Any(context);
+}
+
+antlrcpp::Any Visitor::visitReturn_statement(CsharpParser::Return_statementContext *context) {
+    if(context->ID()) {
+        return antlrcpp::Any(context->ID());
+    }
+    if(context->literal()) {
+        if(context->literal()->NUMBER()) {
+            return antlrcpp::Any(context->literal()->NUMBER());
+        }
+        if(context->literal()->FLOAT_NUMBER()) {
+            return antlrcpp::Any(context->literal()->FLOAT_NUMBER());
+        }
+        if(context->literal()->TEXT()) {
+            return antlrcpp::Any(context->literal()->TEXT());
+        }
+        if(context->literal()->CHARv()) {
+            return antlrcpp::Any(context->literal()->CHARv());
+        }
+    }
+    return antlrcpp::Any(context);
+}
+
+antlrcpp::Any Visitor::visitArg(CsharpParser::ArgContext *context) {
+    if(context->ID() != nullptr)
+    {
+        return antlrcpp::Any(context->ID());
+    }
+    if(context->literal() != nullptr)
+    {
+        return visitLiteral(context->literal());
+    }
+    return antlrcpp::Any(context);
 }
 
 /* ASTProgram */
@@ -107,6 +152,8 @@ std::vector<ASTNode *> ASTScope::get_statements() { return m_statements; }
 void ASTScope::accept(Visitor &visitor) { visitor.visit(*this); }
 
 void ASTArgs::accept(Visitor &visitor) { visitor.visit(*this); }
+
+void ASTReturn::accept(Visitor &visitor) { visitor.visit(*this); }
 
 VisitorInitialiser::VisitorInitialiser(antlrcpp::Any context)
     : m_context(context) {}
@@ -209,9 +256,7 @@ void VisitorInitialiser::visit(ASTScope &node) {
 }
 
 void VisitorInitialiser::visit(ASTArgs &node) {
-  // NOTE: Context for ASTArgs is certain argument
-  auto ctx = m_context.as<antlr4::tree::TerminalNode *>();
-
+  auto ctx = visitArg(m_context.as<CsharpParser::ArgContext *>()).as<antlr4::tree::TerminalNode *>();
   node.set_arg(ctx->getText());
 }
 
@@ -302,8 +347,29 @@ void VisitorInitialiser::visit(ASTFunction &node) {
     child->set_scope_name(ctx->ID()->getText());
     node.set_scope(child);
   }
+  if(ctx->return_statement() != nullptr)
+  {
+    auto return_child = new ASTReturn;
+    VisitorInitialiser visitor(ctx->return_statement());
+    return_child->accept(visitor);
+    node.set_return(return_child);
+  }
   node.func_name() = ctx->ID()->getText();
   node.return_type() = ctx->VAR()->getText();
+}
+
+//NOTE: Perhabs i should implement this as "visit(ASTAssign &node)", 
+//making "visitReturn_statement" implementation more clearly, cleaner and shorter
+void VisitorInitialiser::visit(ASTReturn &node) {
+    auto ctx = m_context.as<CsharpParser::Return_statementContext *>();
+    auto ret_ctx = visitReturn_statement(ctx);
+    node.set_return_value(ret_ctx.as<antlr4::tree::TerminalNode *>()->getText());
+    if(ctx->ID() != nullptr){ node.set_return_type("ID"); }
+    else if(ctx->literal()->NUMBER() != nullptr){node.set_return_type("NUMBER");}
+    else if(ctx->literal()->CHARv() != nullptr){node.set_return_type("CHAR");}
+    else if(ctx->literal()->FLOAT_NUMBER() != nullptr){node.set_return_type("FLOAT");}
+    else if(ctx->literal()->TEXT() != nullptr){node.set_return_type("STRING");}
+    node.set_literal((ctx->ID() == nullptr));
 }
 
 void VisitorInitialiser::visit(ASTVariable &node) {
@@ -326,11 +392,10 @@ void VisitorInitialiser::visit(ASTFuncCall &node) {
   node.func_name() =
       ctx->ID()->getText(); // TODO: Console.Writeln() -> Console/Writeln/args
   if (ctx->args() != nullptr) {
-    for (std::size_t i = 0; i < ctx->args()->UNIT().size(); i++) {
+    for (std::size_t i = 0; i < ctx->args()->arg().size(); i++) {
       auto child = new ASTArgs;
-      VisitorInitialiser visitor(ctx->args()->UNIT(i));
+      VisitorInitialiser visitor(ctx->args()->arg(i));
       child->accept(visitor);
-      // child->set_arg(ctx->args()->UNIT(i)->getText());
       node.append_arg(child);
     }
   }
@@ -363,12 +428,17 @@ void VisitorTraverse::visit(ASTProgram &node) {
 void VisitorTraverse::visit(ASTFunction &node) {
   set_indent(node.get_depth());
   stream << "<function name=\'" << node.func_name() << "\' return-type=\'"
-         << node.return_type() << "\'/>\n";
-  VisitorTraverse visitor(stream);
-  // NOTE:
+         << node.return_type() << "\'";
+    if(node.get_return() != nullptr)
+    {
+        stream << ", return_statement=";
+        node.get_return()->accept(*this);
+        
+    }
+    stream << "/>\n";
   if (node.get_scope() != nullptr) {
     node.increase_depth();
-    node.get_scope()->accept(visitor);
+    node.get_scope()->accept(*this);
     node.decrease_depth();
   }
 }
@@ -394,17 +464,16 @@ void VisitorTraverse::visit(ASTAssign &node) {
 
 void VisitorTraverse::visit(ASTFuncCall &node) {
   set_indent(node.get_depth());
-  stream << "<call name=\'" << node.func_name() << "\', args=";
+  stream << "<call name=\'" << node.func_name() << "\', args=(";
   for (std::size_t i = 0; i < node.get_args().size(); i++) {
-    VisitorTraverse visitor(stream);
 
-    node.get_arg(i)->accept(visitor);
+    node.get_arg(i)->accept(*this);
 
     if (i + 1 != node.get_args().size()) {
       stream << ", ";
     }
   }
-  stream << "/>\n";
+  stream << ")/>\n";
 }
 
 void VisitorTraverse::visit(ASTScope &node) {
@@ -423,6 +492,13 @@ void VisitorTraverse::visit(ASTScope &node) {
 }
 
 void VisitorTraverse::visit(ASTArgs &node) {
-  // NOTE:
   stream << node.get_arg();
 }
+
+void VisitorTraverse::visit(ASTReturn &node) {
+    stream << "(value=" << node.get_return_value()
+           << ", literal=" << node.is_literal()
+           << ", type=" << node.get_return_type()
+           << ")";
+}
+

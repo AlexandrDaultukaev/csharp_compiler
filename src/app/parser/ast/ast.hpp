@@ -14,6 +14,7 @@ class ASTFuncCall;
 class ASTScope;
 class ASTArgs;
 class ASTAssign;
+class ASTReturn;
 
 class Visitor: public CsharpVisitor {
 public:
@@ -29,6 +30,8 @@ public:
     antlrcpp::Any visitFunc_call(CsharpParser::Func_callContext *context) override;
     antlrcpp::Any visitArgs(CsharpParser::ArgsContext *context) override;
     antlrcpp::Any visitLiteral(CsharpParser::LiteralContext *context) override;
+    antlrcpp::Any visitReturn_statement(CsharpParser::Return_statementContext *context) override;
+    antlrcpp::Any visitArg(CsharpParser::ArgContext *context) override;
 
     //antlrcpp::Any visitArgs(CsharpParser::ArgsContext *context) override;
     
@@ -39,6 +42,7 @@ public:
     virtual void visit(ASTScope& node) = 0;
     virtual void visit(ASTArgs& node) = 0;
     virtual void visit(ASTAssign& node) = 0;
+    virtual void visit(ASTReturn& node) = 0;
 
 };
 
@@ -178,20 +182,36 @@ public:
     }
 };
 
+class ASTReturn : public ASTNode {
+private:
+    std::string return_value = "";
+    std::string type = "";
+    bool is_lit = false;
 
+public:
+    ASTReturn() = default;
+    bool is_literal() { return is_lit; }
+    std::string get_return_value() { return return_value; }
+    void set_return_value(std::string rv) { return_value = rv; }
+    std::string get_return_type() { return type; }
+    void set_return_type(std::string t) { type = t; }
+    void set_literal(bool l) { is_lit = l; }
+    ~ASTReturn() = default;
+    
+    void accept(Visitor& visitor) override;
+};
 
 class ASTFunction: public ASTNode {
 private:
     /* Node info */
     std::string m_func_name;
     std::string m_return_type;
+    ASTReturn* m_return = nullptr;
     ASTScope* m_scope = nullptr;
-
 public:
     ASTFunction() = default;
-
-    std::string& func_name();
     std::string& return_type();
+    std::string& func_name();
     void set_scope(ASTScope* sc)
     {
         m_scope = sc;
@@ -200,10 +220,20 @@ public:
     {
         return m_scope;
     }
+    void set_return(ASTReturn* r)
+    {
+        m_return = r;
+    }
+    ASTReturn* get_return()
+    {
+        return m_return;
+    }
+
     void accept(Visitor& visitor) override;
     ~ASTFunction()
     {
         delete m_scope;
+        delete m_return;
     }
 };
 
@@ -223,6 +253,7 @@ public:
     void visit(ASTScope& node) override;
     void visit(ASTArgs& node) override;
     void visit(ASTAssign& node) override;
+    void visit(ASTReturn& node) override;
     
 };
 
@@ -231,6 +262,7 @@ private:
     std::ostream& stream;
 public:
     VisitorTraverse(std::ostream& os);
+
     void set_indent(std::size_t spaces) {for(std::size_t i = 0; i < spaces; i++) { stream << " "; }}
     void visit(ASTProgram& node) override;
     void visit(ASTFunction& node) override;
@@ -239,4 +271,5 @@ public:
     void visit(ASTScope& node) override;
     void visit(ASTArgs& node) override;
     void visit(ASTAssign& node) override;
+    void visit(ASTReturn& node) override;
 };

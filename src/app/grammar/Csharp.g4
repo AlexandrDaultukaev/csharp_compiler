@@ -42,7 +42,6 @@ KEYWORD:
 	| 'public'
 	| 'readonly'
 	| 'ref'
-	| 'return'
 	| 'sealed'
 	| 'sizeof'
 	| 'stackalloc'
@@ -63,6 +62,7 @@ KEYWORD:
 	| 'while';
 
 CLASS: 'class';
+RETURN: 'return';
 
 VAR:
 	INT
@@ -76,7 +76,8 @@ VAR:
 	| UINT
 	| LONG
 	| ULONG
-	| STRING | CHAR;
+	| STRING
+	| CHAR;
 
 INT: 'int' | 'System.Int32';
 FLOAT: 'float' | 'System.Single';
@@ -124,9 +125,11 @@ DQUOTES: '"';
 NUMBER: '0' | DIGITNOZERO (DIGIT)*;
 // NUMBER: DIGITNOZERO (DIGIT)*;
 
-TEXT: DQUOTES [0-9A-Za-z!?@#$%^&*.]+ DQUOTES;
+TEXT: DQUOTES [0-9A-Za-z!?@#$%^&* ,.]+ DQUOTES;
 CHARv: APOSTROPH [0-9A-Za-z!?@#$%^&*.] APOSTROPH;
 FLOAT_NUMBER: NUMBER DOT NUMBER;
+
+// depricated
 UNIT: NUMBER | ID | DQUOTES (TEXT (' ' TEXT)*)? DQUOTES;
 
 fragment DIGITNOZERO: [1-9];
@@ -148,11 +151,16 @@ assign_statement: (ID | var_def) (
 	)? SEMICOLON;
 literal: TEXT | NUMBER | CHARv | FLOAT_NUMBER;
 var_def: VAR ID;
-func_def: (KEYWORD* VAR | VAR) ID RLP RRP (SEMICOLON | scope);
-scope: CLB (statement)* CRB;
+func_def: (KEYWORD* VAR | VAR) ID RLP RRP (
+		(SEMICOLON)
+		| (CLB scope (return_statement)? CRB)
+	);
+scope: (statement)*;
+return_statement: RETURN (literal | ID) SEMICOLON;
 statement: (func_call SEMICOLON) | assign_statement;
 func_call: ID RLP args RRP;
-args: (UNIT (COMMA UNIT)*)?;
+args: (arg (COMMA arg)*)?;
+arg: (ID | literal);
 //TODO: UNIT to ID or NUMBER or STR
 
 // type a = number rvalue: NUMBER+ | ZERO | TEXT |

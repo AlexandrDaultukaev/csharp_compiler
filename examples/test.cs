@@ -8,5 +8,6 @@ int main() {
     float d = 10.2 + 'G';
     float e = 'E' + 42.2;
     float f = a + b;
-    func("Hello World");
+    func("Hello, World!", 3.0, 2, 1, 0.0, 0, 'R', 'U', 'N', '!');
+    return "Enough.";
 }
