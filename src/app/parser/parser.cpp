@@ -65,13 +65,11 @@ void parse_test(std::string filepath, std::string xml="") {
 
     ast->accept(visitor_init);
     std::cout << xml;
-    if(xml != "")
-    {
-        std::ofstream to_stream(xml);
-        VisitorTraverse visitor_print(to_stream);
-        ast->accept(visitor_print); 
-        to_stream.close();
-    }
+    std::ofstream to_stream(xml);
+    VisitorTraverse visitor_print(to_stream);
+    ast->accept(visitor_print); 
+    to_stream.close();
+    
 
     
 

@@ -6,6 +6,7 @@
 #include "antlr4-runtime.h"
 #include <string>
 #include <iostream>
+#include <cstdio>
 
 /*
 * Запуск examples после сборки:
@@ -18,7 +19,7 @@ int main (int argc, const char * argv []) {
 
     CLI::App app;
     std::string filepath;
-    std::string xml_file;
+    std::string xml_file = "";
     bool dump_tokens_key = false;
     bool version_key = false;
     bool dump_ast = false;
@@ -35,20 +36,39 @@ int main (int argc, const char * argv []) {
         std::cout << VERSION << '\n';
     }
     // cs_lexer::dump_tokens(filepath, dump_tokens_key);
-
+    bool delete_tmp = false;
+    if(xml_file == "" && dump_ast)
+    {
+        delete_tmp = true;
+        std::cout << "\nHERE!\n";
+        xml_file = "../../examples/tmp.xml";
+    }
     cs_lexer::parse_test(filepath, xml_file);
+    
+    // To be modified
     if(dump_ast)
     {
+        
         std::string line;
+        // if(xml_file == "")
+        // {
+        //     delete_tmp = true;
+            
+        //     std::ofstream cf(xml_file);
+        //     cf.open(xml_file);
+        // }
         std::ifstream myfile(xml_file);
+        
         if (myfile.is_open())
         {
+            
             while ( std::getline (myfile,line) )
             {
-            std::cout << line << '\n';
+                std::cout << line << '\n';
             }
             myfile.close();
         }
+        if(delete_tmp) { std::remove("../../examples/tmp.xml");}
     }
     return 0;
 }
