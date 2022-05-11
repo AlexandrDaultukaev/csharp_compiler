@@ -4,6 +4,7 @@
 
 #include <any>
 #include <iostream>
+#include <fstream>
 
 antlrcpp::Any
 Visitor::visitExpressions(CsharpParser::ExpressionsContext *context) {
@@ -401,21 +402,19 @@ void VisitorInitialiser::visit(ASTFuncCall &node) {
   }
 }
 
-VisitorTraverse::VisitorTraverse(std::ostream &os) : stream(os) {}
+VisitorTraverse::VisitorTraverse(std::ofstream &os) : stream(os) {}
 
 void VisitorTraverse::visit(ASTProgram &node) {
   for (std::size_t i = 0; i < node.get_depth(); i++) {
     stream << " ";
   }
-
   stream << "<program>\n";
 
   auto children = node.get_children();
 
-  VisitorTraverse visitor(stream);
   for (unsigned int i = 0; i < children.size(); i++) {
     node.increase_depth();
-    children[i]->accept(visitor);
+    children[i]->accept(*this);
     node.decrease_depth();
   }
 
@@ -481,10 +480,9 @@ void VisitorTraverse::visit(ASTScope &node) {
   set_indent(node.get_depth());
   stream << "<scope "
          << "name=\'" << node.get_scope_name() << "\'>\n";
-  VisitorTraverse visitor(stream);
   for (std::size_t i = 0; i < node.get_statements().size(); i++) {
     node.increase_depth();
-    node.get_statement(i)->accept(visitor);
+    node.get_statement(i)->accept(*this);
     node.decrease_depth();
   }
   set_indent(node.get_depth());

@@ -5,7 +5,7 @@
 
 #include <vector>
 #include <string>
-#include <ostream>
+#include <fstream>
 
 class ASTProgram;
 class ASTFunction;
@@ -259,9 +259,9 @@ public:
 
 class VisitorTraverse: public Visitor {
 private:
-    std::ostream& stream;
+    std::ofstream& stream;
 public:
-    VisitorTraverse(std::ostream& os);
+    VisitorTraverse(std::ofstream& os);
 
     void set_indent(std::size_t spaces) {for(std::size_t i = 0; i < spaces; i++) { stream << " "; }}
     void visit(ASTProgram& node) override;

@@ -31,7 +31,7 @@ namespace cs_lexer {
     };
     tokens_array dump_tokens(std::string filepath, int print_key=1);
 
-void parse_test(std::string filepath);
+void parse_test(std::string filepath, std::string xml);
 
 
 

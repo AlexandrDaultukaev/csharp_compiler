@@ -6,6 +6,7 @@
 #include "antlr4-runtime.h"
 #include <string>
 #include <iostream>
+#include <fstream>
 
 
 namespace cs_lexer { 
@@ -42,7 +43,7 @@ namespace cs_lexer {
         return tokens;
     }
 
-void parse_test(std::string filepath) {
+void parse_test(std::string filepath, std::string xml="") {
     std::ifstream stream(filepath);
 
     if (!stream.is_open()) {
@@ -60,12 +61,22 @@ void parse_test(std::string filepath) {
     antlrcpp::Any program = parser.program();
 
     VisitorInitialiser visitor_init(program);
-    VisitorTraverse visitor_print(std::cout);
-
     ASTNode* ast = new ASTProgram;
 
     ast->accept(visitor_init);
-    ast->accept(visitor_print);
+    std::cout << xml;
+    if(xml != "")
+    {
+        std::ofstream to_stream(xml);
+        VisitorTraverse visitor_print(to_stream);
+        ast->accept(visitor_print); 
+        to_stream.close();
+    }
+
+    
+
+
+    
     delete ast;
 }
 

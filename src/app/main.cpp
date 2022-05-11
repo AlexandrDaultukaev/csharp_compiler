@@ -18,12 +18,16 @@ int main (int argc, const char * argv []) {
 
     CLI::App app;
     std::string filepath;
+    std::string xml_file;
     bool dump_tokens_key = false;
     bool version_key = false;
+    bool dump_ast = false;
     app.add_flag("--dump-tokens", dump_tokens_key, "Dump func");
+    app.add_flag("--dump-ast", dump_ast, "Dump ast");
     app.add_flag("--version", version_key, "Version func");
     //TODO: --dump-ast
     auto fileflag = app.add_option("-f, --file", filepath, "Filepath");
+    app.add_option("-x, --to-xml", xml_file, "Filepath XML");
     fileflag->needs(fileflag);
     CLI11_PARSE(app, argc, argv);
     if(version_key)
@@ -32,7 +36,19 @@ int main (int argc, const char * argv []) {
     }
     // cs_lexer::dump_tokens(filepath, dump_tokens_key);
 
-    cs_lexer::parse_test(filepath);
-    
+    cs_lexer::parse_test(filepath, xml_file);
+    if(dump_ast)
+    {
+        std::string line;
+        std::ifstream myfile(xml_file);
+        if (myfile.is_open())
+        {
+            while ( std::getline (myfile,line) )
+            {
+            std::cout << line << '\n';
+            }
+            myfile.close();
+        }
+    }
     return 0;
 }
