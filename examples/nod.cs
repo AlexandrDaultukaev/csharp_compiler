@@ -1,28 +1,14 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
- 
-namespace ConsoleApplication2
+int a = 15;
+int b = 12;
+
+for (int i = a; i > 0; i--)
 {
-    class Program
+    if (a % i == 0)
     {
-        static void Main(string[] args)
+        if (b % i == 0)
         {
-            int a = Convert.ToInt32(Console.ReadLine());
-            int b = Convert.ToInt32(Console.ReadLine());
-            for (int i = a; i > 0; i--)
-            {
-                if (a % i == 0)
-                {
-                    if (b % i == 0)
-                    {
-                        Console.WriteLine(i);
-                        Console.ReadLine();
-                        break;
-                    }
-                }
-            }
+            System.Console.WriteLine(i);
+            break;
         }
     }
 }

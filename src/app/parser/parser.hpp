@@ -6,8 +6,42 @@
 #include <vector>
 #include "antlr4-runtime.h"
 
-namespace cs_lexer { 
-    
+namespace cs_lang { 
+
+
+
+struct Error {
+  size_t m_line;
+  size_t m_column;
+  std::string m_message;
+};
+
+using Errors = std::vector<Error>;
+
+
+struct ParseResult {
+  static ParseResult program(ASTProgram* program) {
+    ParseResult result;
+    result.m_program = program;
+    return result;
+  }
+
+  static ParseResult errors(Errors errors) {
+    ParseResult result;
+    result.m_errors = std::move(errors);
+    return result;
+  }
+
+  ~ParseResult() { delete m_program; }
+
+  ASTProgram* m_program = nullptr;
+  Errors m_errors;
+};
+
+
+void dump_ast(ASTProgram& program);
+void dump_errors(Errors& errors);
+
         struct token {
         int x;
         int y;
@@ -30,8 +64,14 @@ namespace cs_lexer {
         }
     };
     tokens_array dump_tokens(std::string filepath, int print_key=1);
+    void dump_ast(ASTProgram* program, std::string xml_file, bool print_key);
+    ParseResult parse_test(std::string filepath);
 
-void parse_test(std::string filepath, std::string xml);
+
+
+
+
+
 
 
 

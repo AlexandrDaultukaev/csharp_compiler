@@ -27,7 +27,6 @@ KEYWORD:
 	| 'in'
 	| 'interface'
 	| 'internal'
-	| 'is'
 	| 'lock'
 	| 'namespace'
 	| 'new'
@@ -102,13 +101,17 @@ fragment DIGIT: [0-9];
 
 ASSIGN: '=';
 BINARY_OP: PLUS | MINUS | PERS | DIVISION;
-DIVISION: '/';
-PLUS: '+';
-MINUS: '-';
-PERS: '%';
-EQ: '==';
-LESS: '<';
-MR: '>';
+fragment DIVISION: '/';
+fragment PLUS: '+';
+fragment MINUS: '-';
+fragment PERS: '%';
+
+LOGIC_OP: EQ | LESS | MR | MRQ | LESSQ;
+fragment EQ: '==';
+fragment LESS: '<';
+fragment MR: '>';
+fragment MRQ: '>=';
+fragment LESSQ: '<=';
 
 SEMICOLON: ';';
 RLP: '(';
@@ -142,12 +145,14 @@ WS: [ \r\t\n]+ -> skip;
 // func() ; a+b ; a++ ; a=b ; if/while/for ; return ;
 
 program: expressions* EOF;
-expressions: (func_def | assign_statement);
+expressions: (
+		func_def
+		| assign_statement
+		//| assign_statement | if_statement
+	);
 assign_statement: (ID | var_def) (
 		//TODO: assign type
-		ASSIGN (ID | literal | literal) (
-			BINARY_OP (ID | literal | literal)
-		)?
+		ASSIGN (ID | literal) (BINARY_OP (ID | literal))?
 	)? SEMICOLON;
 literal: TEXT | NUMBER | CHARv | FLOAT_NUMBER;
 var_def: VAR ID;
@@ -158,12 +163,12 @@ func_def: (KEYWORD* VAR | VAR) ID RLP RRP (
 scope: (statement)*;
 return_statement: RETURN (literal | ID) SEMICOLON;
 statement: (func_call SEMICOLON) | assign_statement;
+//| if_statement;
 func_call: ID RLP args RRP;
 args: (arg (COMMA arg)*)?;
 arg: (ID | literal);
-//TODO: UNIT to ID or NUMBER or STR
-
-// type a = number rvalue: NUMBER+ | ZERO | TEXT |
+// if_statement: IF RLP (ID (LOGIC_OP (ID | literal))) RRP CLB scope CRB; TODO: if, for type a =
+// number rvalue: NUMBER+ | ZERO | TEXT |
 
 // int a = 12; string a = "Hello"; int a = c + b + ... + n; int a = c + 4; int a = c + b; int a =
 // b++;
