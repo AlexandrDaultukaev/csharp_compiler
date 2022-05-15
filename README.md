@@ -3,8 +3,9 @@ compilers-1-AlexandrDaultukaev created by GitHub Classroom
 
 ### ИВ-921 Даултукаев Александр.
 
-### Lab 2.
-Лексер для языка C#
+
+### Lab 2 & Lab 3.
+Лексер и парсер для языка C#
 
 Для запуска необходимо:
 * Склонировать этот репозиторий
@@ -27,7 +28,36 @@ mkdir build && cd build && cmake .. && cmake --build .
 
 Опции для запуска: \
 ``--dump-tokens`` выводит все токены в терминал в формате: \
-``Loc=<строчка, столбец> имя токена 'значение токена'`` \
+``Loc=<строчка, столбец> имя токена 'значение токена'`` 
+
+``--dump-ast`` выводит AST-tree в формате XML 
+Пример(examples/test.cs):
+```
+<program>
+  <function name='main' return-type='int', return_statement=(value="Enough.", literal=1, type=STRING)/>
+    <scope name='main'>
+      <variable name='f' type='float'/>
+      <variable name='f' type='float'/>
+      <assign lhs=f, rhs=10.1, op=''/>
+      <variable name='s' type='string'/>
+      <assign lhs=s, rhs="Hello", op=''/>
+      <variable name='c' type='char'/>
+      <assign lhs=c, rhs='A', op=''/>
+      <variable name='i' type='int'/>
+      <assign lhs=i, rhs=10, op=''/>
+      <assign lhs=f, rhs=(10, "Hello"), op='+'/>
+      <variable name='d' type='float'/>
+      <assign lhs=d, rhs=(10.2, 'G'), op='+'/>
+      <variable name='e' type='float'/>
+      <assign lhs=e, rhs=('E', 42.2), op='+'/>
+      <assign lhs=f, rhs=(a, b), op='+'/>
+      <call name='func', args=("Hello, World!", 3.0, 2, 1, 0.0, 0, 'R', 'U', 'N', '!')/>
+    </scope>
+</program>
+```
+
+``-x, --to-xml``(optional) \
+ключ, указывающий парсеру в какой файл записывать AST в формате XML
 
 ``-f, --file``(required) \
 ключ, указывающий лексеру какой файл разбить на токены \
