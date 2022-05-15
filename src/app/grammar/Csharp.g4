@@ -3,7 +3,6 @@ grammar Csharp;
 KEYWORD:
 	'abstract'
 	| 'as'
-	| 'bool'
 	| 'base'
 	| 'break'
 	| 'case'
@@ -76,7 +75,8 @@ VAR:
 	| LONG
 	| ULONG
 	| STRING
-	| CHAR;
+	| CHAR
+	| BOOL;
 
 INT: 'int' | 'System.Int32';
 FLOAT: 'float' | 'System.Single';
@@ -91,6 +91,7 @@ LONG: 'long' | 'System.Int64';
 ULONG: 'ulong' | 'System.UInt64';
 STRING: 'string' | 'System.String';
 CHAR: 'char';
+BOOL: 'bool';
 
 IF: 'if';
 ELSE: 'else';
@@ -145,14 +146,12 @@ WS: [ \r\t\n]+ -> skip;
 // func() ; a+b ; a++ ; a=b ; if/while/for ; return ;
 
 program: expressions* EOF;
-expressions: (
-		func_def
-		| assign_statement
-		//| assign_statement | if_statement
-	);
+expressions: ( func_def | assign_statement | if_statement);
 assign_statement: (ID | var_def) (
-		//TODO: assign type
-		ASSIGN (ID | literal) (BINARY_OP (ID | literal))?
+		ASSIGN (ID | literal) (
+			(BINARY_OP (ID | literal))?
+			| func_call
+		)
 	)? SEMICOLON;
 literal: TEXT | NUMBER | CHARv | FLOAT_NUMBER;
 var_def: VAR ID;
@@ -162,13 +161,11 @@ func_def: (KEYWORD* VAR | VAR) ID RLP RRP (
 	);
 scope: (statement)*;
 return_statement: RETURN (literal | ID) SEMICOLON;
-statement: (func_call SEMICOLON) | assign_statement;
-//| if_statement;
+statement: (func_call SEMICOLON)
+	| assign_statement
+	| if_statement;
 func_call: ID RLP args RRP;
 args: (arg (COMMA arg)*)?;
 arg: (ID | literal);
-// if_statement: IF RLP (ID (LOGIC_OP (ID | literal))) RRP CLB scope CRB; TODO: if, for type a =
-// number rvalue: NUMBER+ | ZERO | TEXT |
-
-// int a = 12; string a = "Hello"; int a = c + b + ... + n; int a = c + 4; int a = c + b; int a =
-// b++;
+if_statement:
+	IF RLP ID (LOGIC_OP (ID | literal))? RRP CLB scope CRB;

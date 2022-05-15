@@ -15,6 +15,7 @@ class ASTScope;
 class ASTArgs;
 class ASTAssign;
 class ASTReturn;
+class ASTIf;
 
 class Visitor: public CsharpVisitor {
 public:
@@ -32,7 +33,7 @@ public:
     antlrcpp::Any visitLiteral(CsharpParser::LiteralContext *context) override;
     antlrcpp::Any visitReturn_statement(CsharpParser::Return_statementContext *context) override;
     antlrcpp::Any visitArg(CsharpParser::ArgContext *context) override;
-    //antlrcpp::Any visitIf_statement(CsharpParser::If_statementContext *context) override;
+    antlrcpp::Any visitIf_statement(CsharpParser::If_statementContext *context) override;
 
     //antlrcpp::Any visitArgs(CsharpParser::ArgsContext *context) override;
     
@@ -44,7 +45,7 @@ public:
     virtual void visit(ASTArgs& node) = 0;
     virtual void visit(ASTAssign& node) = 0;
     virtual void visit(ASTReturn& node) = 0;
-    //virtual void visit(ASTIf& node) = 0;
+    virtual void visit(ASTIf& node) = 0;
 
 };
 
@@ -239,24 +240,34 @@ public:
     }
 };
 
-// class ASTIf : public ASTNode {
-//     std::string first = "";
-//     std::string first_type = "";
-//     std::string second = "";
-//     std::string second_type = "";
-//     std::string op = "";
-// public:
-//     ASTIf() = default;
-//     void set_first(std::string s) { first = s;}
-//     void set_first_type(std::string s) { first_type = s;}
-//     void set_second(std::string s) { second = s;}
-//     void set_second_type(std::string s) { second_type = s;}
-//     void set_op(std::string s) { op = s;}
+class ASTIf : public ASTNode {
+    std::string first = "";
+    std::string first_type = "";
+    std::string second = "";
+    std::string second_type = "";
+    std::string op = "";
+    ASTScope* m_scope = nullptr;
+public:
+    ASTIf() = default;
+    void set_first(std::string s) { first = s;}
+    void set_first_type(std::string s) { first_type = s;}
+    void set_second(std::string s) { second = s;}
+    void set_second_type(std::string s) { second_type = s;}
+    void set_op(std::string s) { op = s;}
 
-//     std::string get_first() { return first; }
-//     std::string get_first_type() { return first_type; }
-//     std::string 
-// };
+    std::string get_first() { return first; }
+    std::string get_first_type() { return first_type; }
+    std::string get_second() { return second; }
+    std::string get_second_type() { return second_type; }
+    std::string get_op() { return op; }
+
+    void set_scope(ASTScope* sc) { m_scope = sc; }
+    ASTScope* get_scope() { return m_scope; }
+
+    void accept(Visitor& visitor) override;
+
+    ~ASTIf() { delete m_scope; }
+};
 
 /* Visitor Implementation */
 class VisitorInitialiser: public Visitor {
@@ -274,6 +285,7 @@ public:
     void visit(ASTArgs& node) override;
     void visit(ASTAssign& node) override;
     void visit(ASTReturn& node) override;
+    void visit(ASTIf& node) override;
     
 };
 
@@ -292,6 +304,7 @@ public:
     void visit(ASTArgs& node) override;
     void visit(ASTAssign& node) override;
     void visit(ASTReturn& node) override;
+    void visit(ASTIf& node) override;
 };
 
 

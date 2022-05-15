@@ -17,6 +17,10 @@ Visitor::visitExpressions(CsharpParser::ExpressionsContext *context) {
     return antlrcpp::Any(context->assign_statement());
   }
 
+  if (context->if_statement()) {
+    return antlrcpp::Any(context->if_statement());
+  }
+
   return antlrcpp::Any(context);
 }
 
@@ -27,6 +31,10 @@ antlrcpp::Any Visitor::visitStatement(CsharpParser::StatementContext *context) {
   if (context->assign_statement()) {
     return antlrcpp::Any(context->assign_statement());
   }
+  if (context->if_statement()) {
+    return antlrcpp::Any(context->if_statement());
+  }
+
   return antlrcpp::Any(context);
 }
 
@@ -59,6 +67,10 @@ antlrcpp::Any Visitor::visitArgs(CsharpParser::ArgsContext *context) {
   if (context->arg().size()) {
     return antlrcpp::Any(context->arg());
   }
+  return antlrcpp::Any(context);
+}
+
+antlrcpp::Any Visitor::visitIf_statement(CsharpParser::If_statementContext *context) {
   return antlrcpp::Any(context);
 }
 
@@ -155,6 +167,7 @@ void ASTScope::accept(Visitor &visitor) { visitor.visit(*this); }
 void ASTArgs::accept(Visitor &visitor) { visitor.visit(*this); }
 
 void ASTReturn::accept(Visitor &visitor) { visitor.visit(*this); }
+void ASTIf::accept(Visitor &visitor) { visitor.visit(*this); }
 
 VisitorInitialiser::VisitorInitialiser(antlrcpp::Any context)
     : m_context(context) {}
@@ -205,6 +218,13 @@ void VisitorInitialiser::visit(ASTProgram &node) {
           node.append_child(child2);
         }
       }
+
+      if (expr.is<CsharpParser::If_statementContext *>()) {
+        VisitorInitialiser visitor(expr.as<CsharpParser::If_statementContext *>());
+        child = new ASTIf;
+        child->accept(visitor);
+        node.append_child(child);
+      }
     }
   }
 }
@@ -219,9 +239,9 @@ void VisitorInitialiser::visit(ASTScope &node) {
   for (unsigned int i = 0; i < exprs.size(); i++) {
 
     auto expr = visitStatement(exprs[i]);
-
+    std::cout << "I \n";
     if (expr.isNotNull()) {
-
+      std::cout << "I was hereisNOtNull\n";
       if (expr.is<CsharpParser::Func_callContext *>()) {
         VisitorInitialiser visitor(expr.as<CsharpParser::Func_callContext *>());
 
@@ -252,6 +272,13 @@ void VisitorInitialiser::visit(ASTScope &node) {
           node.append_statement(child2);
         }
       }
+      if (expr.is<CsharpParser::If_statementContext *>()) {
+          std::cout << "I was here\n";
+          VisitorInitialiser visitor(expr.as<CsharpParser::If_statementContext *>());
+          child = new ASTIf;
+          child->accept(visitor);
+          node.append_statement(child);
+      }
     }
   }
 }
@@ -259,6 +286,24 @@ void VisitorInitialiser::visit(ASTScope &node) {
 void VisitorInitialiser::visit(ASTArgs &node) {
   auto ctx = visitArg(m_context.as<CsharpParser::ArgContext *>()).as<antlr4::tree::TerminalNode *>();
   node.set_arg(ctx->getText());
+}
+
+void SetLiteralVariable(ASTVariable* var, CsharpParser::LiteralContext* ctx)
+{
+  var->set_literal(true);
+  if (ctx->TEXT() != nullptr) {
+      var->var_name() = ctx->TEXT()->getText();
+      var->var_type() = "TEXT";
+    } else if (ctx->NUMBER() != nullptr) {
+      var->var_name() = ctx->NUMBER()->getText();
+      var->var_type() = "NUMBER";
+    } else if (ctx->FLOAT_NUMBER() != nullptr) {
+      var->var_name() = ctx->FLOAT_NUMBER()->getText();
+      var->var_type() = "FLOAT_NUMBER";
+    } else if (ctx->CHARv() != nullptr) {
+      var->var_name() = ctx->CHARv()->getText();
+      var->var_type() = "CHAR";
+    }
 }
 
 void VisitorInitialiser::visit(ASTAssign &node) {
@@ -279,24 +324,9 @@ void VisitorInitialiser::visit(ASTAssign &node) {
   }
 
   // Rvalue1
+  
   if (ctx->literal(lit_ind) != nullptr) {
-    if (ctx->literal(lit_ind)->TEXT() != nullptr) {
-      r1->var_name() = ctx->literal(lit_ind)->TEXT()->getText();
-      r1->set_literal(true);
-      r1->var_type() = "TEXT";
-    } else if (ctx->literal(lit_ind)->NUMBER() != nullptr) {
-      r1->var_name() = ctx->literal(lit_ind)->NUMBER()->getText();
-      r1->set_literal(true);
-      r1->var_type() = "NUMBER";
-    } else if (ctx->literal(lit_ind)->FLOAT_NUMBER() != nullptr) {
-      r1->var_name() = ctx->literal(lit_ind)->FLOAT_NUMBER()->getText();
-      r1->set_literal(true);
-      r1->var_type() = "FLOAT_NUMBER";
-    } else if (ctx->literal(lit_ind)->CHARv() != nullptr) {
-      r1->var_name() = ctx->literal(lit_ind)->CHARv()->getText();
-      r1->set_literal(true);
-      r1->var_type() = "CHAR";
-    }
+    SetLiteralVariable(r1, ctx->literal(lit_ind));
     lit_ind++;
   } else {
     r1->var_name() = ctx->ID(ind)->getText();
@@ -309,23 +339,7 @@ void VisitorInitialiser::visit(ASTAssign &node) {
     r2->var_name() = ctx->ID(ind)->getText();
   } else if (ctx->literal(lit_ind) != nullptr) {
     is_r2_set = true;
-    if (ctx->literal(lit_ind)->TEXT() != nullptr) {
-      r2->var_name() = ctx->literal(lit_ind)->TEXT()->getText();
-      r2->set_literal(true);
-      r2->var_type() = "TEXT";
-    } else if (ctx->literal(lit_ind)->NUMBER() != nullptr) {
-      r2->var_name() = ctx->literal(lit_ind)->NUMBER()->getText();
-      r2->set_literal(true);
-      r2->var_type() = "NUMBER";
-    } else if (ctx->literal(lit_ind)->FLOAT_NUMBER() != nullptr) {
-      r2->var_name() = ctx->literal(lit_ind)->FLOAT_NUMBER()->getText();
-      r2->set_literal(true);
-      r2->var_type() = "FLOAT_NUMBER";
-    } else if (ctx->literal(lit_ind)->CHARv() != nullptr) {
-      r2->var_name() = ctx->literal(lit_ind)->CHARv()->getText();
-      r2->set_literal(true);
-      r2->var_type() = "CHAR";
-    }
+    SetLiteralVariable(r2, ctx->literal(lit_ind));
   }
 
   node.set_lvalue(l);
@@ -399,6 +413,35 @@ void VisitorInitialiser::visit(ASTFuncCall &node) {
       child->accept(visitor);
       node.append_arg(child);
     }
+  }
+}
+
+void VisitorInitialiser::visit(ASTIf &node)
+{
+  auto ctx = m_context.as<CsharpParser::If_statementContext *>();
+  node.set_first(ctx->ID(0)->getText());
+  node.set_first_type("ID");
+  if(ctx->ID().size() > 1)
+  {
+    node.set_first(ctx->ID(1)->getText());
+    node.set_first_type("ID");
+    node.set_op(ctx->LOGIC_OP()->getText());
+  } else if (ctx->literal() != nullptr)
+  {
+    auto ctx_literal = visitLiteral(ctx->literal()).as<antlr4::tree::TerminalNode *>();
+    node.set_second(ctx_literal->getText());
+    if(ctx->literal()->NUMBER() != nullptr){node.set_second_type("NUMBER");}
+    else if(ctx->literal()->CHARv() != nullptr){node.set_second_type("CHAR");}
+    else if(ctx->literal()->FLOAT_NUMBER() != nullptr){node.set_second_type("FLOAT");}
+    else if(ctx->literal()->TEXT() != nullptr){node.set_second_type("STRING");}
+    node.set_op(ctx->LOGIC_OP()->getText());
+  }
+  if (ctx->scope() != nullptr) {
+    auto child = new ASTScope;
+    VisitorInitialiser visitor(ctx->scope());
+    child->accept(visitor);
+    child->set_scope_name("if" + node.get_first());
+    node.set_scope(child);
   }
 }
 
@@ -491,6 +534,23 @@ void VisitorTraverse::visit(ASTScope &node) {
 
 void VisitorTraverse::visit(ASTArgs &node) {
   stream << node.get_arg();
+}
+
+void VisitorTraverse::visit(ASTIf &node) {
+  set_indent(node.get_depth());
+  stream << "<if lhs=(value=" << node.get_first() << ", type=" << node.get_first_type() << ")";
+  if(node.get_second() != "")
+  {
+    stream << ", lhs=(value=" << node.get_second() << ", type=" << node.get_second_type() << ")";
+    stream << ", op=\'" << node.get_op() << "\'";
+  }
+  stream << ">\n";
+  if(node.get_scope() != nullptr)
+  {
+    node.increase_depth();
+    node.get_scope()->accept(*this);
+    node.decrease_depth();
+  }
 }
 
 void VisitorTraverse::visit(ASTReturn &node) {

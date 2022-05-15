@@ -136,19 +136,6 @@ ParseResult parse_test(std::string filepath) {
     ASTProgram* ast = new ASTProgram;
     ast->accept(visitor_init);
     return ParseResult::program(ast);
-
-    //std::ofstream to_stream(xml);
-
-    //VisitorTraverse visitor_print(to_stream);
-    //ast->accept(visitor_print); 
-    //to_stream.close();
-    
-
-    
-
-
-    
-    //delete ast;
 }
 
 }
