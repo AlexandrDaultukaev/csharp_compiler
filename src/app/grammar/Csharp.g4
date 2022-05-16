@@ -148,8 +148,8 @@ WS: [ \r\t\n]+ -> skip;
 program: expressions* EOF;
 expressions: ( func_def | assign_statement | if_statement);
 assign_statement: (ID | var_def) (
-		ASSIGN (ID | literal) (
-			(BINARY_OP (ID | literal))?
+		ASSIGN (
+			((ID | literal) ((BINARY_OP (ID | literal)))?)
 			| func_call
 		)
 	)? SEMICOLON;

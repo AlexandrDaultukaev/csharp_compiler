@@ -311,45 +311,55 @@ void VisitorInitialiser::visit(ASTAssign &node) {
   ASTVariable *l = new ASTVariable;
   ASTVariable *r1 = new ASTVariable;
   ASTVariable *r2 = new ASTVariable;
+  ASTFuncCall *f = new ASTFuncCall;
   bool is_r2_set = false;
   int ind = 0;
   int lit_ind = 0;
+  
   // Lvalue
   if (ctx->var_def() == nullptr) {
     l->var_name() = ctx->ID(ind)->getText();
     ind++;
-
   } else {
     l->var_name() = ctx->var_def()->ID()->getText();
   }
-
-  // Rvalue1
-  
-  if (ctx->literal(lit_ind) != nullptr) {
-    SetLiteralVariable(r1, ctx->literal(lit_ind));
-    lit_ind++;
-  } else {
-    r1->var_name() = ctx->ID(ind)->getText();
-    ind++;
-  }
-
-  // Rvalue2
-  if (ctx->ID(ind) != nullptr) {
-    is_r2_set = true;
-    r2->var_name() = ctx->ID(ind)->getText();
-  } else if (ctx->literal(lit_ind) != nullptr) {
-    is_r2_set = true;
-    SetLiteralVariable(r2, ctx->literal(lit_ind));
-  }
-
   node.set_lvalue(l);
-  node.set_rvalue1(r1);
-  if (is_r2_set) {
-    node.set_oper(ctx->BINARY_OP()->getText());
-    node.set_rvalue2(r2);
+
+    // FuncCall, like 'bool b = s1.Contains(s2);'
+  if(ctx->func_call() != nullptr)
+  {
+    VisitorInitialiser visitor(ctx->func_call());
+    f->accept(visitor);
+    node.set_funccall(f);
   } else {
-    node.set_rvalue2(nullptr);
+    // Rvalue1
+    if (ctx->literal(lit_ind) != nullptr) {
+      SetLiteralVariable(r1, ctx->literal(lit_ind));
+      lit_ind++;
+    } else {
+      r1->var_name() = ctx->ID(ind)->getText();
+      ind++;
+    }
+
+    // Rvalue2
+    if (ctx->ID(ind) != nullptr) {
+      is_r2_set = true;
+      r2->var_name() = ctx->ID(ind)->getText();
+    } else if (ctx->literal(lit_ind) != nullptr) {
+      is_r2_set = true;
+      SetLiteralVariable(r2, ctx->literal(lit_ind));
+    }
+
+    
+    node.set_rvalue1(r1);
+    if (is_r2_set) {
+      node.set_oper(ctx->BINARY_OP()->getText());
+      node.set_rvalue2(r2);
+    } else {
+      node.set_rvalue2(nullptr);
+    }
   }
+  
 }
 
 void VisitorInitialiser::visit(ASTFunction &node) {
@@ -494,14 +504,29 @@ void VisitorTraverse::visit(ASTVariable &node) {
 void VisitorTraverse::visit(ASTAssign &node) {
   set_indent(node.get_depth());
   stream << "<assign lhs=" << node.get_lvalue()->var_name() << ", rhs=";
-  if (node.get_rvalue2() != nullptr) {
+  if(node.get_rvalue1() != nullptr)
+  {
+      if (node.get_rvalue2() != nullptr) {
     stream << "(" << node.get_rvalue1()->var_name() << ", "
            << node.get_rvalue2()->var_name() << "), op=\'" << node.get_oper()
            << "\'/>\n";
-  } else {
-    stream << node.get_rvalue1()->var_name() << ", op=\'" << node.get_oper()
-           << "\'/>\n";
+    } else {
+      stream << node.get_rvalue1()->var_name() << ", op=\'" << node.get_oper()
+            << "\'/>\n";
+    }
+  } else if(node.get_funccall() != nullptr)
+  {
+    std::size_t tmp = node.get_depth();
+    node.set_dpsn(true);
+    node.set_depth(0);
+    node.get_funccall()->accept(*this);
+    stream << ">\n";
+    node.set_depth(tmp);
+    node.decrease_depth();
+    node.set_dpsn(false);
+
   }
+
 }
 
 void VisitorTraverse::visit(ASTFuncCall &node) {
@@ -515,7 +540,9 @@ void VisitorTraverse::visit(ASTFuncCall &node) {
       stream << ", ";
     }
   }
-  stream << ")/>\n";
+  stream << ")/>";
+  if(!node.get_dpsn())
+  { stream << "\n"; }
 }
 
 void VisitorTraverse::visit(ASTScope &node) {

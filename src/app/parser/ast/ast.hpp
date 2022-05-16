@@ -52,12 +52,15 @@ public:
 class ASTNode {
 protected:
     static inline std::size_t m_depth = 0;
-    //std::string m_type;
+    static inline bool dpsn = false;
 
 public:
     virtual ~ASTNode() = default;
     static void increase_depth() {m_depth+=2;}
     static void decrease_depth() {if (m_depth >= 2) {m_depth-=2;}}
+    static void set_depth(std::size_t d) { m_depth = d; }
+    static void set_dpsn(bool d) { dpsn = d; }
+    static bool get_dpsn() { return dpsn; }
     static std::size_t get_depth() {return m_depth;}
     virtual void  accept(Visitor& visitor) = 0;
 };
@@ -103,17 +106,20 @@ private:
     ASTVariable* lvalue = nullptr;
     ASTVariable* rvalue1 = nullptr;
     ASTVariable* rvalue2 = nullptr;
+    ASTFuncCall* funccall = nullptr;
     std::string oper;
 public:
     ASTAssign() = default;
     void set_lvalue(ASTVariable* a) {lvalue = a;}
     void set_rvalue1(ASTVariable* a) {rvalue1 = a;}
     void set_rvalue2(ASTVariable* a) {rvalue2 = a;}
+    void set_funccall(ASTFuncCall* f) {funccall = f;}
     void set_oper(std::string o) { oper = o; }
 
     ASTVariable* get_lvalue() { return lvalue; }
     ASTVariable* get_rvalue1() { return rvalue1; }
     ASTVariable* get_rvalue2() { return rvalue2; }
+    ASTFuncCall* get_funccall() { return funccall; }
     std::string get_oper() { return oper; }
 
     void accept(Visitor& visitor) override;
