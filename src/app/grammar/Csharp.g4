@@ -99,7 +99,7 @@ FOR: 'for';
 ID: SYMBOL (SYMBOL | DIGIT | '.' SYMBOL)*;
 fragment SYMBOL: [A-Za-z];
 fragment DIGIT: [0-9];
-
+UNARYMATHEXP: '++' | '--';
 ASSIGN: '=';
 BINARY_OP: PLUS | MINUS | PERS | DIVISION;
 fragment DIVISION: '/';
@@ -138,7 +138,7 @@ UNIT: NUMBER | ID | DQUOTES (TEXT (' ' TEXT)*)? DQUOTES;
 
 fragment DIGITNOZERO: [1-9];
 
-UNARYMATHEXP: '++' | '--';
+
 WS: [ \r\t\n]+ -> skip;
 // start: (var_def_expr | func_def_expr)*; var_def_expr: VAR ID ASSIGN NUMBER SEMICOLON;
 // func_def_expr: VAR ID RLP RRP (CLB var_def_expr CRB | SEMICOLON);
@@ -146,13 +146,13 @@ WS: [ \r\t\n]+ -> skip;
 // func() ; a+b ; a++ ; a=b ; if/while/for ; return ;
 
 program: expressions* EOF;
-expressions: ( func_def | assign_statement | if_statement);
+expressions: ( func_def | (assign_statement SEMICOLON) | if_statement | for_statement);
 assign_statement: (ID | var_def) (
 		ASSIGN (
 			((ID | literal) ((BINARY_OP (ID | literal)))?)
 			| func_call
 		)
-	)? SEMICOLON;
+	)?;
 literal: TEXT | NUMBER | CHARv | FLOAT_NUMBER;
 var_def: VAR ID;
 func_def: (KEYWORD* VAR | VAR) ID RLP RRP (
@@ -162,10 +162,14 @@ func_def: (KEYWORD* VAR | VAR) ID RLP RRP (
 scope: (statement)*;
 return_statement: RETURN (literal | ID) SEMICOLON;
 statement: (func_call SEMICOLON)
-	| assign_statement
-	| if_statement;
+	| (assign_statement SEMICOLON)
+	| if_statement | for_statement | (kw_statement SEMICOLON);
 func_call: ID RLP args RRP;
 args: (arg (COMMA arg)*)?;
 arg: (ID | literal);
 if_statement:
 	IF RLP ID (LOGIC_OP (ID | literal))? RRP CLB scope CRB;
+for_statement: FOR RLP assign_statement SEMICOLON for_condition SEMICOLON for_operation RRP CLB scope CRB;
+for_condition: ID LOGIC_OP (ID | literal);
+for_operation: (ID UNARYMATHEXP) | assign_statement;
+kw_statement: KEYWORD;

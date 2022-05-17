@@ -3,9 +3,11 @@ int b = 12;
 
 for (int i = a; i > 0; i--)
 {
-    if (a % i == 0)
+    int res = a % i;
+    if (res == 0)
     {
-        if (b % i == 0)
+        res = b % i;
+        if (res == 0)
         {
             System.Console.WriteLine(i);
             break;
