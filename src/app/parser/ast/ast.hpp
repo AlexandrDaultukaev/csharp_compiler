@@ -17,6 +17,7 @@ class ASTAssign;
 class ASTReturn;
 class ASTIf;
 
+
 class Visitor: public CsharpVisitor {
 public:
     antlrcpp::Any visitExpressions(CsharpParser::ExpressionsContext* context) override;
@@ -34,8 +35,7 @@ public:
     antlrcpp::Any visitReturn_statement(CsharpParser::Return_statementContext *context) override;
     antlrcpp::Any visitArg(CsharpParser::ArgContext *context) override;
     antlrcpp::Any visitIf_statement(CsharpParser::If_statementContext *context) override;
-
-    //antlrcpp::Any visitArgs(CsharpParser::ArgsContext *context) override;
+    antlrcpp::Any visitPars(CsharpParser::ParsContext *context) override;
     
     virtual void visit(ASTProgram& node) = 0;
     virtual void visit(ASTFunction& node) = 0;
@@ -152,12 +152,13 @@ private:
     // m_var_name - NAME if var isn't literal, and VALUE if var is literal
     std::string m_var_name;
     bool is_lit = false;
-    //TODO: literal: 'A', 'Hello', 12, 12.4
     std::string m_var_type;
+    std::string ctx_type = "";
 
 public:
     ASTVariable() = default;
-
+    std::string get_ctx_type() { return ctx_type; }
+    void set_ctx_type(std::string s) { ctx_type = s; } 
     std::string& var_name();
     std::string& var_type();
     void set_literal(bool l) { is_lit = l;}
@@ -191,6 +192,23 @@ public:
     }
 };
 
+// class ASTPars : public ASTNode {
+//     std::string type = "";
+//     std::string value = "";
+//     bool is_lit = false;
+// public:
+//     ASTPars() = default;
+//     bool is_literal() { return is_lit; }
+//     std::string get_value() { return value; }
+//     void set_value(std::string rv) { value = rv; }
+//     std::string get_type() { return type; }
+//     void set_type(std::string t) { type = t; }
+//     void set_literal(bool l) { is_lit = l; }
+//     ~ASTPars() = default;
+    
+//     void accept(Visitor& visitor) override;
+// };
+
 class ASTReturn : public ASTNode {
 private:
     std::string return_value = "";
@@ -215,6 +233,7 @@ private:
     /* Node info */
     std::string m_func_name;
     std::string m_return_type;
+    std::vector<ASTVariable*> params;
     ASTReturn* m_return = nullptr;
     ASTScope* m_scope = nullptr;
 public:
@@ -244,6 +263,10 @@ public:
         delete m_scope;
         delete m_return;
     }
+
+    std::vector<ASTVariable*> get_params() { return params; }
+
+    void append_param(ASTVariable* p) { params.push_back(p); }
 };
 
 class ASTIf : public ASTNode {
@@ -292,7 +315,6 @@ public:
     void visit(ASTAssign& node) override;
     void visit(ASTReturn& node) override;
     void visit(ASTIf& node) override;
-    
 };
 
 class VisitorTraverse: public Visitor {

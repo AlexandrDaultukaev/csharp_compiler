@@ -155,7 +155,7 @@ assign_statement: (ID | var_def) (
 	)? SEMICOLON;
 literal: TEXT | NUMBER | CHARv | FLOAT_NUMBER;
 var_def: VAR ID;
-func_def: (KEYWORD* VAR | VAR) ID RLP RRP (
+func_def: (KEYWORD* VAR | VAR) ID RLP pars RRP (
 		(SEMICOLON)
 		| (CLB scope (return_statement)? CRB)
 	);
@@ -167,5 +167,6 @@ statement: (func_call SEMICOLON)
 func_call: ID RLP args RRP;
 args: (arg (COMMA arg)*)?;
 arg: (ID | literal);
+pars: (var_def (COMMA var_def)*)?;
 if_statement:
 	IF RLP ID (LOGIC_OP (ID | literal))? RRP CLB scope CRB;

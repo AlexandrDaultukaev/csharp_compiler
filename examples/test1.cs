@@ -1,1 +1,5 @@
-b = Contains();
+
+int main(int i)
+{
+func(hello);
+}
