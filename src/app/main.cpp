@@ -10,7 +10,7 @@
 
 /*
 * Запуск examples после сборки:
-*  /build/bin$ ./app --dump-tokens -f ../../examples/(min\nod\substr\test).cs
+*  /build/bin$ ./app --dump-tokens -f ../../examples/(nod\substr\test).cs
 */
 
 #define VERSION "0.0.1"
