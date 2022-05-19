@@ -3,13 +3,13 @@ set(SRC_PATH ${CMAKE_SOURCE_DIR}/src/app)
 enable_testing()
 
 add_executable(
-  lexer_tests
-  lexer_tests.cpp
+  tests
+  tests.cpp
   
 )
 
 target_include_directories(
-  lexer_tests
+  tests
   PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}
   PRIVATE
@@ -18,7 +18,7 @@ target_include_directories(
 )
 
 target_link_libraries(
-  lexer_tests
+  tests
     antlr4_cpp_runtime
     parserlib
     gram
@@ -27,4 +27,4 @@ target_link_libraries(
 )
 
 include(GoogleTest)
-gtest_discover_tests(lexer_tests)
+gtest_discover_tests(tests)

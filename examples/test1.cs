@@ -1,7 +1,10 @@
 
 int main(int i)
 {
-func(hello);
+    for(int i = 10; i > 0; i--)
+    {
+        Console.WriteLine(i);
+    }
 }
 if(a)
 {break;}

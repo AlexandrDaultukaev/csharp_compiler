@@ -40,3 +40,49 @@ TEST(LexerSuite, TokenTest)
         EXPECT_EQ(token_names[i], tkn_arr[i].get_token_name());
     }
 }
+
+TEST(ParserSuite, ParserTest)
+{
+    const std::string testfile = "../../tests/parser-tests-cs/test.cs";
+    std::string xml_file = "../../tests/parser-tests-cs/test.xml";
+    std::vector<std::string> res{"<program>", "<function name='main' return-type='int', return_statement=(value=\"Enough.\", literal=1, type=STRING)/>", "<scope name='main'>", "<assign lhs=f, rhs=10.1, op=''/>", "<assign lhs=s, rhs=\"Hello\", op=''/>", "<assign lhs=c, rhs='A', op=''/>", "<assign lhs=i, rhs=10, op=''/>", "<assign lhs=f, rhs=(10, \"Hello\"), op='+'/>", "<assign lhs=d, rhs=(10.2, 'G'), op='+'/>", "<assign lhs=e, rhs=('E', 42.2), op='+'/>", "<assign lhs=f, rhs=(a, b), op='+'/>", "<call name='func', args=(\"Hello, World!\", 3.0, 2, 1, 0.0, 0, 'R', 'U', 'N', '!')/>", "<if lhs=(value=i, type=ID), lhs=(value=10, type=NUMBER), op='>'>", "<scope name='ifi'>", "<assign lhs=e, rhs=('E', 42.2), op='+'/>", "<assign lhs=f, rhs=(a, b), op='+'/>", "<call name='func', args=(\"Hello, World!\", 3.0, 2, 1, 0.0, 0, 'R', 'U', 'N', '!')/>", "</scope>", "</scope>", "</program>"};
+    auto parse_result = cs_lang::parse_test(testfile);
+    cs_lang::dump_ast(parse_result.m_program, xml_file, 0);
+    std::ifstream xf(xml_file);
+    xf.open(xml_file);
+    std::string line;
+    if (xf.is_open())
+    {
+        std::size_t i = 0;
+        while (std::getline(xf,line) )
+        {
+            EXPECT_EQ(line, res[i]);
+            i++;
+        }
+        xf.close();
+        std::remove(xml_file.c_str());
+    }
+}
+
+TEST(ParserSuite, ParserCycleTest)
+{
+    const std::string testfile = "../../tests/parser-tests-cs/cycletest.cs";
+    std::string xml_file = "../../tests/parser-tests-cs/test.xml";
+    std::vector<std::string> res{"<for <assign lhs=i, rhs=10, op=''/>, condition=(i>0), operation=(i--)/>", "<scope name=''>", "<call name='Console.WriteLine', args=(i)/>", "</scope>", "</program>"};
+    auto parse_result = cs_lang::parse_test(testfile);
+    cs_lang::dump_ast(parse_result.m_program, xml_file, 0);
+    std::ifstream xf(xml_file);
+    xf.open(xml_file);
+    std::string line;
+    if (xf.is_open())
+    {
+        std::size_t i = 0;
+        while (std::getline(xf,line) )
+        {
+            EXPECT_EQ(line, res[i]);
+            i++;
+        }
+        xf.close();
+        std::remove(xml_file.c_str());
+    }
+}

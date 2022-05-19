@@ -41,6 +41,9 @@ antlrcpp::Any Visitor::visitStatement(CsharpParser::StatementContext *context) {
   if (context->kw_statement()) {
     return antlrcpp::Any(context->kw_statement());
   }
+  if (context->for_statement()) {
+    return antlrcpp::Any(context->for_statement());
+  }
 
   return antlrcpp::Any(context);
 }
@@ -374,6 +377,14 @@ void VisitorInitialiser::visit(ASTScope &node) {
         VisitorInitialiser visitor(
             expr.as<CsharpParser::Kw_statementContext *>());
         child = new ASTKw;
+        child->accept(visitor);
+        node.append_statement(child);
+      }
+
+      if (expr.is<CsharpParser::For_statementContext *>()) {
+        VisitorInitialiser visitor(
+            expr.as<CsharpParser::For_statementContext *>());
+        child = new ASTFor;
         child->accept(visitor);
         node.append_statement(child);
       }
