@@ -150,6 +150,13 @@ public:
   std::string get_oper() { return oper; }
 
   void accept(Visitor &visitor) override;
+
+  ~ASTAssign() {
+    delete lvalue;
+    delete rvalue1;
+    delete rvalue2;
+    delete funccall;
+  }
 };
 
 class ASTProgram : public ASTNode {
@@ -249,6 +256,8 @@ public:
   std::string get_id() { return id; }
   std::string get_unary_op() { return unary_op; }
   void accept(Visitor &visitor) override;
+
+  ~ASTForOp() { delete for_op_assign; }
 };
 
 // int i = 0; i < 10; i++
@@ -270,6 +279,12 @@ public:
   ASTForOp *get_op() { return op; }
   ASTScope *get_scope() { return scope; }
   void accept(Visitor &visitor) override;
+  ~ASTFor() {
+    delete assign;
+    delete condition;
+    delete op;
+    delete scope;
+  }
 };
 
 // class ASTPars : public ASTNode {
