@@ -1,11 +1,13 @@
 #include "grammar/CsharpLexer.h"
 #include "grammar/CsharpParser.h"
+#include "symbol_table/symbol_table.hpp"
 #include "parser/parser.hpp"
 #include "CLI/CLI.hpp"
 #include "antlr4-runtime.h"
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <iomanip>
 
 
 namespace cs_lang { 
@@ -65,8 +67,17 @@ void dump_ast(ASTProgram* program, std::string xml_file, bool print_key) {
         }
         if(delete_tmp) { std::remove("../../examples/tmp.xml");}
     }
-
 }
+
+    void dump_table(ASTProgram* program) {
+        VisitorTable visitor;
+        program->accept(visitor);
+        for(auto& items : visitor.get_table())
+        {
+            std::cout << std::setw(20) << items.first << std::setw(20) << items.second.type 
+            << std::setw(3) << items.second.level << std::setw(20) << items.second.fragment_type << "\n";
+        }
+    }
 
     tokens_array dump_tokens(std::string filepath, int print_key) {
         std::ifstream stream;

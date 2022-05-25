@@ -18,6 +18,8 @@ parser/parser.hpp
 parser/parser.cpp
 parser/ast/ast.cpp
 parser/ast/ast.hpp
+parser/symbol_table/symbol_table.hpp
+parser/symbol_table/symbol_table.cpp
 )
 
 include(CompileOptions)
@@ -49,6 +51,9 @@ target_include_directories(
       ${SRC_PATH}
 )
 
+
+
+
 # target_link_libraries(lexerlib antlr4_cpp_runtime)
 # target_link_libraries(lexerlib CLI11)
 target_link_libraries(gram antlr4_cpp_runtime)
@@ -56,7 +61,6 @@ target_link_libraries(gram antlr4_cpp_runtime)
 target_link_libraries(parserlib antlr4_cpp_runtime)
 target_link_libraries(parserlib CLI11)
 target_link_libraries(parserlib gram)
-
 
 
 target_link_libraries(${target_name} antlr4_cpp_runtime)

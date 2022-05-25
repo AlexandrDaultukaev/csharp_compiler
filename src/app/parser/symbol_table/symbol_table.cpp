@@ -1,5 +1,3 @@
-#include "ast.hpp"
-
 #include "grammar/CsharpVisitor.h"
 #include "symbol_table.hpp"
 
@@ -22,6 +20,7 @@
 //   void visit(ASTKw &node) override;
 
 
+std::size_t VisitorTable::table_level = 0;
 
 void VisitorTable::visit(ASTProgram& node)
 {
@@ -38,7 +37,7 @@ void VisitorTable::visit(ASTFunction& node)
     p.fragment_type = "FUNCTION_DEF";
     p.type = node.return_type();
     table[node.func_name()] = p;
-    table_level++;
+    incr_level();
 
     for(auto& param : node.get_params())
     {
@@ -49,25 +48,29 @@ void VisitorTable::visit(ASTFunction& node)
     {
         scope->accept(*this);
     }
-
-    Properties p_return;
-    p.level = table_level;
-    if(node.get_return()->is_literal())
+    if(node.get_return() != nullptr)
     {
-        p.fragment_type = "LRETURN_VARIABLE"; //LRETURN -> L(iteral)RETURN
-    } 
-    else 
-    {
-        p.fragment_type = "RETURN_VARIABLE";
+        Properties p_return;
+        p.level = table_level;
+        if(node.get_return()->is_literal())
+        {
+            p.fragment_type = "LRETURN_VARIABLE"; //LRETURN -> L(iteral)RETURN
+        } 
+        else 
+        {
+            p.fragment_type = "RETURN_VARIABLE";
+        }
+        p.type = node.get_return()->get_return_type();
+        table[node.get_return()->get_return_value()] = p;
     }
-    p.type = node.get_return()->get_return_type();
-    table[node.get_return()->get_return_value()] = p;
-    table_level--;
+
+    decr_level();
 }
 
 void VisitorTable::visit(ASTVariable& node) 
 {
     Properties p;
+    std::cout << "VAR\n";
     if(node.get_ctx_type() == "ASSIGN")
     {
         if(node.is_literal())
@@ -78,10 +81,21 @@ void VisitorTable::visit(ASTVariable& node)
         {
             p.fragment_type = "VARIABLE";
         }
-        
+        std::cout << "ASSIGN\n";
+        if(table.contains(node.var_name()) && node.get_frag() == "LEFT_ASSIGN")
+        {
+            try {
+                throw std::runtime_error("ERROR: Redefinition variable \'" + node.var_name() + "\'");
+            } catch(std::runtime_error& e)
+            {
+                std::cerr << e.what() << "\n";
+                exit(EXIT_FAILURE);
+            }
+        }
     }
     else if(node.get_ctx_type() == "PARS")
     {
+        std::cout << "PARS\n";
         if(node.is_literal())
         {
             //error
@@ -91,12 +105,16 @@ void VisitorTable::visit(ASTVariable& node)
         }
         else
         {
-            p.fragment_type = "PVARIABLE"
+            p.fragment_type = "PVARIABLE";
         }
          // P(arameter)Variable
     }
     p.level = table_level;
     p.type = node.var_type();
+    if((node.get_frag() == "RIGHT_ASSIGN1" || node.get_frag() == "RIGHT_ASSIGN2") && p.fragment_type[0] != 'L')
+    {
+        p.type = "ASSIGN_ID";
+    }
     table[node.var_name()] = p;
 }
 
@@ -105,5 +123,149 @@ void VisitorTable::visit(ASTFuncCall& node)
     Properties p;
     p.fragment_type = "FUNCTION_CALL";
     p.level = table_level;
+    p.type = "~";
+    table[node.func_name()] = p;
+    for(auto& arg: node.get_args())
+    {
+        arg->accept(*this);
+    }
+}
+
+void VisitorTable::visit(ASTScope& node)
+{
+    for(auto& child : node.get_statements())
+    {
+        child->accept(*this);
+    }
+}
+
+void VisitorTable::visit(ASTArgs& node)
+{
+    Properties p;
+    if(node.is_literal())
+    {
+        p.fragment_type = "LARGUMENT";
+    }
+    else {
+        p.fragment_type = "ARGUMENT";
+    }
     
+    p.level = table_level;
+    p.type = "";
+    table[node.get_arg()] = p;
+}
+
+void VisitorTable::visit(ASTAssign& node)
+{
+    if(node.get_lvalue() != nullptr)
+    {
+        node.get_lvalue()->accept(*this);
+    }
+
+    if(node.get_rvalue1() != nullptr)
+    {
+        node.get_rvalue1()->accept(*this);
+    }
+
+    if(node.get_rvalue2() != nullptr)
+    {
+        node.get_rvalue2()->accept(*this);
+    }
+}
+
+void VisitorTable::visit(ASTReturn& node)
+{
+    Properties p;
+    if(node.is_literal())
+    {
+        p.fragment_type = "LRETURN";
+    }
+    else
+    {
+        p.fragment_type = "RETURN";
+    }
+
+    p.level = table_level;
+    p.type = node.get_return_type();
+    table[node.get_return_value()] = p;
+}
+
+void VisitorTable::visit(ASTIf& node)
+{
+    Properties p1;
+    p1.fragment_type = "IFVARIABLE";
+    p1.level = table_level;
+    p1.type = node.get_first_type();
+    table[node.get_first()] = p1;
+
+    Properties p2;
+    p2.fragment_type = "IFVARIABLE";
+    p2.level = table_level;
+    p2.type = node.get_second_type();
+    table[node.get_second()] = p2;
+    incr_level();
+    node.get_scope()->accept(*this);
+    decr_level();
+}
+
+void VisitorTable::visit(ASTFor& node)
+{
+    if(node.get_assing() != nullptr)
+    {
+        node.get_assing()->accept(*this);
+    }
+
+    if(node.get_cond() != nullptr)
+    {
+        node.get_cond()->accept(*this);
+    }
+
+    if(node.get_op() != nullptr)
+    {
+        node.get_op()->accept(*this);
+    }
+
+    incr_level();
+    node.get_scope()->accept(*this);
+    decr_level();
+}
+
+void VisitorTable::visit(ASTForCond& node)
+{
+    Properties p1;
+    if(node.is_literal())
+    {
+        p1.fragment_type = "LFORVARIABLE";
+    }
+    else
+    {
+        p1.fragment_type = "FORVARIABLE";
+    }
+    p1.level = table_level;
+    p1.type = "";
+
+    table[node.get_first()] = p1;
+
+    Properties p2;
+    p2.fragment_type = "FORVARIABLE";
+    p2.level = table_level;
+    p2.type = "";
+    table[node.get_second()] = p2;
+}
+
+void VisitorTable::visit(ASTForOp& node)
+{
+    
+    if(node.get_assign() != nullptr)
+    {
+        node.get_assign()->accept(*this);
+    }
+    else
+    {
+        Properties p1;
+        p1.fragment_type = "FOROPVARIABLE";
+        p1.level = table_level;
+        p1.type = "";
+        table[node.get_id()] = p1;
+    }
 }

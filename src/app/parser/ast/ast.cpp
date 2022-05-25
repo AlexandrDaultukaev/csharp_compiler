@@ -347,15 +347,22 @@ void VisitorInitialiser::visit(ASTScope &node) {
         VisitorInitialiser visitor(
             expr.as<CsharpParser::Assign_statementContext *>());
 
-        child = new ASTVariable;
 
-        child->accept(visitor);
+        //**********************************************************
+        // allow: <variable a, int>
+        //        <assign a, ...>
+
+        // child = new ASTVariable;
+        
+        // static_cast<ASTVariable *>(child)->set_ctx_type("ASSIGN");
+        // static_cast<ASTVariable *>(child)->set_frag("LEFT_ASSIGN");
+        // child->accept(visitor);
 
         // Lock to add variable of undefined type
-        if (static_cast<ASTVariable *>(child)->var_type() != "") {
-          node.append_statement(child);
-        }
-
+        // if (static_cast<ASTVariable *>(child)->var_type() != "") {
+        //   node.append_statement(child);
+        // }
+        //**********************************************************
         // Check if statement looks like "(int) a = b + (c)"
         if (expr.as<CsharpParser::Assign_statementContext *>()->ASSIGN() !=
             nullptr) {
@@ -395,6 +402,10 @@ void VisitorInitialiser::visit(ASTScope &node) {
 void VisitorInitialiser::visit(ASTArgs &node) {
   auto ctx = visitArg(m_context.as<CsharpParser::ArgContext *>())
                  .as<antlr4::tree::TerminalNode *>();
+  if(m_context.as<CsharpParser::ArgContext *>()->literal())
+  {
+    node.set_literal(true);
+  }
   node.set_arg(ctx->getText());
 }
 
@@ -424,14 +435,18 @@ void VisitorInitialiser::visit(ASTAssign &node) {
   bool is_r2_set = false;
   int ind = 0;
   int lit_ind = 0;
-
+  l->set_ctx_type("ASSIGN");
+  r1->set_ctx_type("ASSIGN");
+  r2->set_ctx_type("ASSIGN");
   // Lvalue
   if (ctx->var_def() == nullptr) {
     l->var_name() = ctx->ID(ind)->getText();
     ind++;
   } else {
     l->var_name() = ctx->var_def()->ID()->getText();
+    l->var_type() = ctx->var_def()->VAR()->getText();
   }
+  l->set_frag("LEFT_ASSIGN");
   node.set_lvalue(l);
 
   // FuncCall, like 'bool b = s1.Contains(s2);'
@@ -441,6 +456,7 @@ void VisitorInitialiser::visit(ASTAssign &node) {
     node.set_funccall(f);
   } else {
     // Rvalue1
+    delete f;
     if (ctx->literal(lit_ind) != nullptr) {
       SetLiteralVariable(r1, ctx->literal(lit_ind));
       lit_ind++;
@@ -448,14 +464,16 @@ void VisitorInitialiser::visit(ASTAssign &node) {
       r1->var_name() = ctx->ID(ind)->getText();
       ind++;
     }
-
+    r1->set_frag("RIGHT_ASSIGN1");
     // Rvalue2
     if (ctx->ID(ind) != nullptr) {
       is_r2_set = true;
       r2->var_name() = ctx->ID(ind)->getText();
+      r2->set_frag("RIGHT_ASSIGN2");
     } else if (ctx->literal(lit_ind) != nullptr) {
       is_r2_set = true;
       SetLiteralVariable(r2, ctx->literal(lit_ind));
+      r2->set_frag("LRIGHT_ASSIGN2");
     }
 
     node.set_rvalue1(r1);
@@ -463,6 +481,7 @@ void VisitorInitialiser::visit(ASTAssign &node) {
       node.set_oper(ctx->BINARY_OP()->getText());
       node.set_rvalue2(r2);
     } else {
+      delete r2;
       node.set_rvalue2(nullptr);
     }
   }

@@ -2,6 +2,7 @@
 #include "grammar/CsharpParser.h"
 #include "grammar/CsharpBaseListener.h"
 #include "parser/parser.hpp"
+//#include "parser/symbol_table/symbol_table.hpp"
 #include "CLI/CLI.hpp"
 #include "antlr4-runtime.h"
 #include <string>
@@ -23,8 +24,10 @@ int main (int argc, const char * argv []) {
     bool dump_tokens_key = false;
     bool version_key = false;
     bool dump_ast = false;
+    bool dump_tab = false;
     app.add_flag("--dump-tokens", dump_tokens_key, "Dump func");
     app.add_flag("--dump-ast", dump_ast, "Dump ast");
+    app.add_flag("--dump-table", dump_tab, "Dump table");
     app.add_flag("--version", version_key, "Version func");
     auto fileflag = app.add_option("-f, --file", filepath, "Filepath");
     app.add_option("-x, --to-xml", xml_file, "Filepath XML");
@@ -46,6 +49,10 @@ int main (int argc, const char * argv []) {
     
     if (dump_ast || xml_file != "") {
         cs_lang::dump_ast(parse_result.m_program, xml_file, dump_ast);
+    }
+
+    if (dump_tab) {
+        cs_lang::dump_table(parse_result.m_program);
     }
 
     if(dump_tokens_key) {

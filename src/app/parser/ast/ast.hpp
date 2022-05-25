@@ -95,9 +95,11 @@ public:
 class ASTArgs : public ASTNode {
 private:
   std::string arg;
-
+  bool is_lit = false;
 public:
   ASTArgs() = default;
+  bool is_literal() { return is_lit; }
+  void set_literal(bool l) { is_lit = l; }
   std::string get_arg() { return arg; }
   void set_arg(std::string a) { arg = a; }
   void accept(Visitor &visitor) override;
@@ -123,6 +125,52 @@ public:
   ~ASTScope() {
     for (std::size_t i = 0; i < m_statements.size(); i++) {
       delete m_statements[i];
+    }
+  }
+};
+
+class ASTVariable : public ASTNode {
+private:
+    // m_var_name - NAME if var isn't literal, and VALUE if var is literal
+    std::string fragment_data = "";
+    std::string m_var_name;
+    bool is_lit = false;
+    std::string m_var_type;
+    std::string ctx_type = "";
+
+public:
+    ASTVariable() = default;
+    std::string get_frag() { return fragment_data; }
+    void set_frag(std::string f) { fragment_data = f;}
+    std::string get_ctx_type() { return ctx_type; }
+    void set_ctx_type(std::string s) { ctx_type = s; } 
+    std::string& var_name();
+    std::string& var_type();
+    void set_literal(bool l) { is_lit = l;}
+    bool is_literal() {return is_lit;}
+    void accept(Visitor& visitor) override;
+    ~ASTVariable() = default;
+};
+
+class ASTFuncCall : public ASTNode {
+private:
+  std::string m_func_name;
+  std::vector<ASTArgs *> args;
+  // std::vector<ASTVariable>
+
+public:
+  ASTFuncCall() = default;
+
+  std::string &func_name();
+  std::vector<ASTArgs *> get_args() { return args; }
+  ASTArgs *get_arg(std::size_t i) { return args[i]; }
+  void set_args(ASTArgs *a, size_t i) { args[i] = a; }
+  void append_arg(ASTArgs *a) { args.push_back(a); }
+
+  void accept(Visitor &visitor) override;
+  ~ASTFuncCall() {
+    for (std::size_t i = 0; i < args.size(); i++) {
+      delete args[i];
     }
   }
 };
@@ -179,47 +227,9 @@ public:
   }
 };
 
-class ASTVariable : public ASTNode {
-private:
-    // m_var_name - NAME if var isn't literal, and VALUE if var is literal
-    std::string m_var_name;
-    bool is_lit = false;
-    std::string m_var_type;
-    std::string ctx_type = "";
 
-public:
-    ASTVariable() = default;
-    std::string get_ctx_type() { return ctx_type; }
-    void set_ctx_type(std::string s) { ctx_type = s; } 
-    std::string& var_name();
-    std::string& var_type();
-    void set_literal(bool l) { is_lit = l;}
-    bool is_literal() {return is_lit;}
-    void accept(Visitor& visitor) override;
-};
 
-class ASTFuncCall : public ASTNode {
-private:
-  std::string m_func_name;
-  std::vector<ASTArgs *> args;
-  // std::vector<ASTVariable>
 
-public:
-  ASTFuncCall() = default;
-
-  std::string &func_name();
-  std::vector<ASTArgs *> get_args() { return args; }
-  ASTArgs *get_arg(std::size_t i) { return args[i]; }
-  void set_args(ASTArgs *a, size_t i) { args[i] = a; }
-  void append_arg(ASTArgs *a) { args.push_back(a); }
-
-  void accept(Visitor &visitor) override;
-  ~ASTFuncCall() {
-    for (std::size_t i = 0; i < args.size(); i++) {
-      delete args[i];
-    }
-  }
-};
 // i < 10
 class ASTForCond : public ASTNode {
   std::string first = "";
@@ -239,6 +249,7 @@ public:
   std::string get_op() { return op; }
   bool is_literal() { return is_lit; }
   void accept(Visitor &visitor) override;
+  ~ASTForCond() = default;
 };
 // i++
 class ASTForOp : public ASTNode {
@@ -402,6 +413,7 @@ public:
   std::string get_kw() { return kw; }
   void set_kw(std::string k) { kw = k; }
   void accept(Visitor &visitor) { visitor.visit(*this); };
+  ~ASTKw() = default;
 };
 
 /* Visitor Implementation */

@@ -3,26 +3,13 @@
 #include "grammar/CsharpParser.h"
 #include "grammar/CsharpVisitor.h"
 
-#include "ast/ast.hpp"
+#include "parser/ast/ast.hpp"
 
 #include <fstream>
 #include <string>
 #include <vector>
 #include <iomanip>
 
-class ASTProgram;
-class ASTFunction;
-class ASTVariable;
-class ASTFuncCall;
-class ASTScope;
-class ASTArgs;
-class ASTAssign;
-class ASTReturn;
-class ASTIf;
-class ASTFor;
-class ASTForOp;
-class ASTForCond;
-class ASTKw;
 
 struct Properties {
     std::string fragment_type; // VARIABLE, FUNCTION
@@ -36,7 +23,7 @@ private:
   Table table;
 	static std::size_t table_level;
 public:
-  VisitorTable();
+  VisitorTable() = default;
 
 	Table& get_table() { return table; }
 	void set_symbol(std::string s, Properties p)  { table[s] = p; }
@@ -63,7 +50,5 @@ public:
   void visit(ASTFor &node) override;
   void visit(ASTForCond &node) override;
   void visit(ASTForOp &node) override;
-  void visit(ASTKw &node) override;
+  void visit(ASTKw &node) {};
 };
-
-std::size_t VisitorTable::table_level = 0;

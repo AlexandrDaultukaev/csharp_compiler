@@ -1,10 +1,7 @@
 
 int main(int i)
 {
-    for(int i = 10; i > 0; i--)
-    {
-        Console.WriteLine(i);
-    }
+    int b = a + 2;
+    int c = 1;
+    int d = 1 + 1;
 }
-if(a)
-{break;}
