@@ -56,6 +56,25 @@ mkdir build && cd build && cmake .. && cmake --build .
 </program>
 ```
 
+``--dump-table`` выводит таблицу символов
+Пример(examples/test1.cs):
+```
+                  10              NUMBER  1           LVARIABLE
+                  15              NUMBER  1           LVARIABLE
+                   2              NUMBER  1           LVARIABLE
+                   a           ASSIGN_ID  1            VARIABLE
+                   b                 int  1            VARIABLE
+                   c                 int  1            VARIABLE
+                   d                 int  1            VARIABLE
+                   i                 int  1           PVARIABLE
+                   j                 int  1            VARIABLE
+                main                 int  0        FUNCTION_DEF
+```
+Первая колонка - значение символа, указанного в коде. \
+Вторая колонка - тип символа. У литератов - это NUMBER, в случае оператора присваивания: ``int b = a + 2``, ``a`` будет является ASSIGN_ID \
+Третья колонка - уровень вложенности. 0 - глобальный scope. \
+Четвертая колонка - описание символа. Префикс "L" говорит о том, что символ литерал, "P" - символ относится к параметру функции.
+
 ``-x, --to-xml``(optional) \
 ключ, указывающий парсеру в какой файл записывать AST в формате XML
 
