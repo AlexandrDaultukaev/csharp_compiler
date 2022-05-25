@@ -133,9 +133,9 @@ class ASTVariable : public ASTNode {
 private:
     // m_var_name - NAME if var isn't literal, and VALUE if var is literal
     std::string fragment_data = "";
-    std::string m_var_name;
+    std::string m_var_name = "";
     bool is_lit = false;
-    std::string m_var_type;
+    std::string m_var_type = "";
     std::string ctx_type = "";
 
 public:

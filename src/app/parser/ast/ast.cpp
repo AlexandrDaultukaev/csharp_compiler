@@ -232,16 +232,16 @@ void VisitorInitialiser::visit(ASTProgram &node) {
 
         VisitorInitialiser visitor(
             expr.as<CsharpParser::Assign_statementContext *>());
+        //***********************************************************
+        // child = new ASTVariable;
+        // static_cast<ASTVariable *>(child)->set_ctx_type("ASSIGN");
+        // child->accept(visitor);
 
-        child = new ASTVariable;
-        static_cast<ASTVariable *>(child)->set_ctx_type("ASSIGN");
-        child->accept(visitor);
-
-        // Lock to add variable of undefined type
-        if (static_cast<ASTVariable *>(child)->var_type() != "") {
-          node.append_child(child);
-        }
-
+        // // Lock to add variable of undefined type
+        // if (static_cast<ASTVariable *>(child)->var_type() != "") {
+        //   node.append_child(child);
+        // }
+        //***********************************************************
         // Check if statement looks like "(int) a = b + (c)"
         if (expr.as<CsharpParser::Assign_statementContext *>()->ASSIGN() !=
             nullptr) {

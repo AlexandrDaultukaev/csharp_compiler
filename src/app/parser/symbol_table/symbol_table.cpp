@@ -70,7 +70,6 @@ void VisitorTable::visit(ASTFunction& node)
 void VisitorTable::visit(ASTVariable& node) 
 {
     Properties p;
-    std::cout << "VAR\n";
     if(node.get_ctx_type() == "ASSIGN")
     {
         if(node.is_literal())
@@ -81,9 +80,9 @@ void VisitorTable::visit(ASTVariable& node)
         {
             p.fragment_type = "VARIABLE";
         }
-        std::cout << "ASSIGN\n";
-        if(table.contains(node.var_name()) && node.get_frag() == "LEFT_ASSIGN")
+        if(table.contains(node.var_name()) && node.get_frag() == "LEFT_ASSIGN" && node.var_type() != "")
         {
+            
             try {
                 throw std::runtime_error("ERROR: Redefinition variable \'" + node.var_name() + "\'");
             } catch(std::runtime_error& e)
@@ -95,7 +94,6 @@ void VisitorTable::visit(ASTVariable& node)
     }
     else if(node.get_ctx_type() == "PARS")
     {
-        std::cout << "PARS\n";
         if(node.is_literal())
         {
             //error
