@@ -3,8 +3,8 @@ compilers-1-AlexandrDaultukaev created by GitHub Classroom
 
 ### ИВ-921 Даултукаев Александр.
 
-
-### Lab 2 & Lab 3.
+Здесь находится описание следующих лабораторных работ:
+### Lab 1 & Lab 2 & Lab 3 & Lab 4.
 Лексер и парсер для языка C#
 
 Для запуска необходимо:
@@ -57,7 +57,7 @@ mkdir build && cd build && cmake .. && cmake --build .
 ```
 
 ``--dump-table`` выводит таблицу символов
-Пример(examples/test1.cs):
+Пример 1:
 ```
                   10              NUMBER  1           LVARIABLE
                   15              NUMBER  1           LVARIABLE
@@ -74,6 +74,24 @@ mkdir build && cd build && cmake .. && cmake --build .
 Вторая колонка - тип символа. У литератов - это NUMBER, в случае оператора присваивания: ``int b = a + 2``, ``a`` будет является ASSIGN_ID \
 Третья колонка - уровень вложенности. 0 - глобальный scope. \
 Четвертая колонка - описание символа. Префикс "L" говорит о том, что символ литерал, "P" - символ относится к параметру функции.
+
+Пример 2(examples/nod.cs):
+```
+                             0                      0         FORVARIABLE
+                            12              NUMBER  0           LVARIABLE
+                            15              NUMBER  0           LVARIABLE
+      System.Console.WriteLine                   ~  3       FUNCTION_CALL
+                             a                 int  0            VARIABLE
+                           a_0           ASSIGN_ID  0            VARIABLE
+                           a_1           ASSIGN_ID  1            VARIABLE
+                             b                 int  0            VARIABLE
+                           b_2           ASSIGN_ID  2            VARIABLE
+                             i                      0       FOROPVARIABLE
+                           i_1           ASSIGN_ID  1            VARIABLE
+                           i_2           ASSIGN_ID  2            VARIABLE
+                           res                 int  1            VARIABLE
+```
+Первая колонка представляет собой значение символа, но если он также упоминается глубже(в внутренних областях видимости), то указывается постфикс '_depth', где depth - это глубина вложенности.
 
 ``-x, --to-xml``(optional) \
 ключ, указывающий парсеру в какой файл записывать AST в формате XML
