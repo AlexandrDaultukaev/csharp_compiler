@@ -74,7 +74,7 @@ void dump_ast(ASTProgram* program, std::string xml_file, bool print_key) {
         program->accept(visitor);
         for(auto& items : visitor.get_table())
         {
-            std::cout << std::setw(20) << items.first << std::setw(20) << items.second.type 
+            std::cout << std::setw(30) << items.first << std::setw(20) << items.second.type 
             << std::setw(3) << items.second.level << std::setw(20) << items.second.fragment_type << "\n";
         }
     }

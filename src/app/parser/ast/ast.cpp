@@ -358,7 +358,7 @@ void VisitorInitialiser::visit(ASTScope &node) {
         // static_cast<ASTVariable *>(child)->set_frag("LEFT_ASSIGN");
         // child->accept(visitor);
 
-        // Lock to add variable of undefined type
+        // //Lock to add variable of undefined type
         // if (static_cast<ASTVariable *>(child)->var_type() != "") {
         //   node.append_statement(child);
         // }

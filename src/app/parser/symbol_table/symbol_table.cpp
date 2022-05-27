@@ -19,7 +19,6 @@
 //   void visit(ASTForOp &node) override;
 //   void visit(ASTKw &node) override;
 
-
 std::size_t VisitorTable::table_level = 0;
 
 void VisitorTable::visit(ASTProgram& node)
@@ -80,11 +79,29 @@ void VisitorTable::visit(ASTVariable& node)
         {
             p.fragment_type = "VARIABLE";
         }
-        if(table.contains(node.var_name()) && node.get_frag() == "LEFT_ASSIGN" && node.var_type() != "")
+        //REDEFINITION ERROR
+        if(table.contains(node.var_name()) && node.get_frag() == "LEFT_ASSIGN" && node.var_type() != "" && table_level == table[node.var_name()].level)
         {
             
             try {
                 throw std::runtime_error("ERROR: Redefinition variable \'" + node.var_name() + "\'");
+            } catch(std::runtime_error& e)
+            {
+                std::cerr << e.what() << "\n";
+                exit(EXIT_FAILURE);
+            }
+        }
+        // Because we gonna keep type variable when we assign new value to variable
+        if(table.contains(node.var_name()) && node.get_frag() == "LEFT_ASSIGN" && node.var_type() == "")
+        {
+            return;
+        }
+
+        //UNDEFINED VARIABLE ERROR
+        if(!table.contains(node.var_name()) && node.get_frag() == "LEFT_ASSIGN" && node.var_type() == "")
+        {
+            try {
+                throw std::runtime_error("ERROR: Undefined variable \'" + node.var_name() + "\'");
             } catch(std::runtime_error& e)
             {
                 std::cerr << e.what() << "\n";
@@ -109,11 +126,14 @@ void VisitorTable::visit(ASTVariable& node)
     }
     p.level = table_level;
     p.type = node.var_type();
+    std::string key = node.var_name();
     if((node.get_frag() == "RIGHT_ASSIGN1" || node.get_frag() == "RIGHT_ASSIGN2") && p.fragment_type[0] != 'L')
     {
         p.type = "ASSIGN_ID";
+        key = node.var_name() + "_" + std::to_string(table_level);
+        table[key] = p;
     }
-    table[node.var_name()] = p;
+    table[key] = p;
 }
 
 void VisitorTable::visit(ASTFuncCall& node) 
@@ -143,14 +163,15 @@ void VisitorTable::visit(ASTArgs& node)
     if(node.is_literal())
     {
         p.fragment_type = "LARGUMENT";
+        p.level = table_level;
+        p.type = "";
+        table[node.get_arg()] = p;
     }
-    else {
-        p.fragment_type = "ARGUMENT";
-    }
+    // else {
+    //     p.fragment_type = "ARGUMENT";
+    // }
     
-    p.level = table_level;
-    p.type = "";
-    table[node.get_arg()] = p;
+
 }
 
 void VisitorTable::visit(ASTAssign& node)
@@ -190,17 +211,17 @@ void VisitorTable::visit(ASTReturn& node)
 
 void VisitorTable::visit(ASTIf& node)
 {
-    Properties p1;
-    p1.fragment_type = "IFVARIABLE";
-    p1.level = table_level;
-    p1.type = node.get_first_type();
-    table[node.get_first()] = p1;
+    // Properties p1;
+    // p1.fragment_type = "IFVARIABLE";
+    // p1.level = table_level;
+    // p1.type = node.get_first_type();
+    // table[node.get_first()] = p1;
 
-    Properties p2;
-    p2.fragment_type = "IFVARIABLE";
-    p2.level = table_level;
-    p2.type = node.get_second_type();
-    table[node.get_second()] = p2;
+    // Properties p2;
+    // p2.fragment_type = "IFVARIABLE";
+    // p2.level = table_level;
+    // p2.type = node.get_second_type();
+    // table[node.get_second()] = p2;
     incr_level();
     node.get_scope()->accept(*this);
     decr_level();
@@ -226,6 +247,17 @@ void VisitorTable::visit(ASTFor& node)
     incr_level();
     node.get_scope()->accept(*this);
     decr_level();
+    if(table[node.get_assing()->get_lvalue()->var_name()].level > table_level)
+    {   
+         try {
+                throw std::runtime_error("ERROR: Redefinition variable \'" + node.get_assing()->get_lvalue()->var_name() + "\'");
+            } catch(std::runtime_error& e)
+            {
+                std::cerr << e.what() << "\n";
+                exit(EXIT_FAILURE);
+            }
+    }
+    
 }
 
 void VisitorTable::visit(ASTForCond& node)
