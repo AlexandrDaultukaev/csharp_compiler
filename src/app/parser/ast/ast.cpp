@@ -170,8 +170,8 @@ void ASTForOp::accept(Visitor &visitor) { visitor.visit(*this); }
 
 /* ASTVariable */
 
-std::string &ASTVariable::var_name() { return m_var_name; }
-std::string &ASTVariable::var_type() { return m_var_type; }
+// std::string &ASTVariable::var_name() { return m_var_name; }
+// std::string &ASTVariable::var_type() { return m_var_type; }
 
 void ASTVariable::accept(Visitor &visitor) { visitor.visit(*this); }
 
@@ -412,17 +412,17 @@ void VisitorInitialiser::visit(ASTArgs &node) {
 void SetLiteralVariable(ASTVariable *var, CsharpParser::LiteralContext *ctx) {
   var->set_literal(true);
   if (ctx->TEXT() != nullptr) {
-    var->var_name() = ctx->TEXT()->getText();
-    var->var_type() = "TEXT";
+    var->set_var_name(ctx->TEXT()->getText()); 
+    var->set_var_type("TEXT");
   } else if (ctx->NUMBER() != nullptr) {
-    var->var_name() = ctx->NUMBER()->getText();
-    var->var_type() = "NUMBER";
+    var->set_var_name(ctx->NUMBER()->getText());
+    var->set_var_type("NUMBER");
   } else if (ctx->FLOAT_NUMBER() != nullptr) {
-    var->var_name() = ctx->FLOAT_NUMBER()->getText();
-    var->var_type() = "FLOAT_NUMBER";
+    var->set_var_name(ctx->FLOAT_NUMBER()->getText());
+    var->set_var_type("FLOAT_NUMBER");
   } else if (ctx->CHARv() != nullptr) {
-    var->var_name() = ctx->CHARv()->getText();
-    var->var_type() = "CHAR";
+    var->set_var_name(ctx->CHARv()->getText());
+    var->set_var_type("CHAR");
   }
 }
 
@@ -440,11 +440,11 @@ void VisitorInitialiser::visit(ASTAssign &node) {
   r2->set_ctx_type("ASSIGN");
   // Lvalue
   if (ctx->var_def() == nullptr) {
-    l->var_name() = ctx->ID(ind)->getText();
+    l->set_var_name(ctx->ID(ind)->getText());
     ind++;
   } else {
-    l->var_name() = ctx->var_def()->ID()->getText();
-    l->var_type() = ctx->var_def()->VAR()->getText();
+    l->set_var_name(ctx->var_def()->ID()->getText());
+    l->set_var_type(ctx->var_def()->VAR()->getText());
   }
   l->set_frag("LEFT_ASSIGN");
   node.set_lvalue(l);
@@ -461,14 +461,14 @@ void VisitorInitialiser::visit(ASTAssign &node) {
       SetLiteralVariable(r1, ctx->literal(lit_ind));
       lit_ind++;
     } else {
-      r1->var_name() = ctx->ID(ind)->getText();
+      r1->set_var_name(ctx->ID(ind)->getText());
       ind++;
     }
     r1->set_frag("RIGHT_ASSIGN1");
     // Rvalue2
     if (ctx->ID(ind) != nullptr) {
       is_r2_set = true;
-      r2->var_name() = ctx->ID(ind)->getText();
+      r2->set_var_name(ctx->ID(ind)->getText());
       r2->set_frag("RIGHT_ASSIGN2");
     } else if (ctx->literal(lit_ind) != nullptr) {
       is_r2_set = true;
@@ -545,20 +545,20 @@ void VisitorInitialiser::visit(ASTVariable &node) {
   {  // TODO: If var == literal -> ERROR
     auto ctx = m_context.as<CsharpParser::Assign_statementContext *>();
     if (ctx->ID().size() < 1) {
-      node.var_name() = ctx->var_def()->ID()->getText();
-      node.var_type() = ctx->var_def()->VAR()->getText();
+      node.set_var_name(ctx->var_def()->ID()->getText());
+      node.set_var_type(ctx->var_def()->VAR()->getText());
 
     } else {
-      node.var_type() = "";
+      node.set_var_type("");
 
-      node.var_name() = ctx->ID()[0]->getText();
+      node.set_var_name(ctx->ID()[0]->getText());
     }
   }
   if(node.get_ctx_type() == "PARS")
   {
       auto ctx = m_context.as<CsharpParser::Var_defContext *>();
-      node.var_name() = ctx->ID()->getText();
-      node.var_type() = ctx->VAR()->getText();
+      node.set_var_name(ctx->ID()->getText());
+      node.set_var_type(ctx->VAR()->getText());
   }
 
 }
@@ -650,8 +650,8 @@ void VisitorTraverse::visit(ASTFunction &node) {
     stream << "\b, params=(";
     for(std::size_t i = 0; i < params.size(); i++)
     {
-      stream << params[i]->var_name() << ", ";
-      stream << params[i]->var_type() << "; ";
+      stream << params[i]->get_var_name() << ", ";
+      stream << params[i]->get_var_type() << "; ";
     }
     stream << "\b\b";
     stream << "), ";
@@ -676,8 +676,8 @@ void VisitorTraverse::visit(ASTFunction &node) {
 
 void VisitorTraverse::visit(ASTVariable &node) {
   set_indent(node.get_depth());
-  stream << "<variable name=\'" << node.var_name() << "\' type=\'"
-         << node.var_type() << "\'/>";
+  stream << "<variable name=\'" << node.get_var_name() << "\' type=\'"
+         << node.get_var_type() << "\'/>";
   if(!node.get_dpsn())
   {
     stream << "\n";
@@ -686,14 +686,14 @@ void VisitorTraverse::visit(ASTVariable &node) {
 
 void VisitorTraverse::visit(ASTAssign &node) {
   set_indent(node.get_depth());
-  stream << "<assign lhs=" << node.get_lvalue()->var_name() << ", rhs=";
+  stream << "<assign lhs=" << node.get_lvalue()->get_var_name() << ", rhs=";
   if (node.get_rvalue1() != nullptr) {
     if (node.get_rvalue2() != nullptr) {
-      stream << "(" << node.get_rvalue1()->var_name() << ", "
-             << node.get_rvalue2()->var_name() << "), op=\'" << node.get_oper()
+      stream << "(" << node.get_rvalue1()->get_var_name() << ", "
+             << node.get_rvalue2()->get_var_name() << "), op=\'" << node.get_oper()
              << "\'/>";
     } else {
-      stream << node.get_rvalue1()->var_name() << ", op=\'" << node.get_oper()
+      stream << node.get_rvalue1()->get_var_name() << ", op=\'" << node.get_oper()
              << "\'/>";
     }
   } else if (node.get_funccall() != nullptr) {

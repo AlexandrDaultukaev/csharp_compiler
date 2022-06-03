@@ -144,8 +144,12 @@ public:
     void set_frag(std::string f) { fragment_data = f;}
     std::string get_ctx_type() { return ctx_type; }
     void set_ctx_type(std::string s) { ctx_type = s; } 
-    std::string& var_name();
-    std::string& var_type();
+    std::string get_var_name() { return m_var_name; }
+    void set_var_name(std::string s) { m_var_name = s; }
+    std::string get_var_type() { return m_var_type; }
+    void set_var_type(std::string s) { m_var_type = s; }
+    // std::string& var_name();
+    // std::string& var_type();
     void set_literal(bool l) { is_lit = l;}
     bool is_literal() {return is_lit;}
     void accept(Visitor& visitor) override;
