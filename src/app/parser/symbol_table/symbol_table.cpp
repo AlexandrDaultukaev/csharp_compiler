@@ -163,14 +163,32 @@ void VisitorTable::visit(ASTArgs& node)
     if(node.is_literal())
     {
         p.fragment_type = "LARGUMENT";
-        p.level = table_level;
-        p.type = "";
-        table[node.get_arg()] = p;
+
+        if(node.get_arg()[0] == std::string("\"")[0])
+        {
+            p.type = "TEXT";
+        } else if(std::isdigit(node.get_arg()[0])) {
+            p.type = "NUMBER";
+        }
     }
-    // else {
-    //     p.fragment_type = "ARGUMENT";
-    // }
-    
+    else {
+        p.fragment_type = "ARGUMENT";
+        if(!table.contains(node.get_arg()))
+        {
+            try {
+            throw std::runtime_error("ERROR: Undefined argument \'" + node.get_arg() + "\' in function-call");
+            } catch(std::runtime_error& e)
+            {
+                std::cerr << e.what() << "\n";
+                exit(EXIT_FAILURE);
+            }
+        }
+        else {
+            p.type = table[node.get_arg()].type;
+        }
+    }
+    p.level = table_level;
+    table[node.get_arg()+"_argument_"+std::to_string(table_level)] = p;
 
 }
 
@@ -263,23 +281,53 @@ void VisitorTable::visit(ASTFor& node)
 void VisitorTable::visit(ASTForCond& node)
 {
     Properties p2;
+    // std::cout << "ans" << (node.is_literal());
     if(node.is_literal())
     {
         p2.fragment_type = "LFORCONDVARIABLE";
+        if(node.get_second()[0] == std::string("\"")[0])
+        {
+            p2.type = "TEXT";
+        } else if(std::isdigit(node.get_second()[0])) {
+            p2.type = "NUMBER";
+        } 
     }
     else
     {
         p2.fragment_type = "FORCONDVARIABLE";
+        if(table.contains(node.get_second()))
+        {
+            
+            p2.type = table[node.get_second()].type;
+        } else {
+            // for(int i = 0; i < k(undefined); i++)
+            try {
+                throw std::runtime_error("ERROR: Undefined variable \'" + node.get_second() + "\' in cond-expression: \'" + node.get_first() + " " + node.get_op() + " " + node.get_second() + "\'");
+            } catch(std::runtime_error& e)
+            {
+                std::cerr << e.what() << "\n";
+                exit(EXIT_FAILURE);
+            }
+        }
     }
     p2.level = table_level;
-    p2.type = "";
-
+    // for(int i = 0; j(undefined) < 10; i++)
+    if(!table.contains(node.get_first()))
+    {
+        try {
+            throw std::runtime_error("ERROR: Undefined variable \'" + node.get_first() + "\' in cond-expression: \'" + node.get_first() + " " + node.get_op() + " " + node.get_second() + "\'");
+        } catch(std::runtime_error& e)
+        {
+            std::cerr << e.what() << "\n";
+            exit(EXIT_FAILURE);
+        }
+    }
     table[node.get_second()+"_cond" + "_" + std::to_string(table_level)] = p2;
 
     Properties p1;
     p1.fragment_type = "FORCONDVARIABLE";
     p1.level = table_level;
-    p1.type = "";
+    p1.type = table[node.get_first()].type;
     table[node.get_first()+"_cond" + "_" + std::to_string(table_level)] = p1;
 }
 
@@ -294,7 +342,17 @@ void VisitorTable::visit(ASTForOp& node)
         Properties p1;
         p1.fragment_type = "FOROPVARIABLE";
         p1.level = table_level;
-        p1.type = "";
+        if(!table.contains(node.get_id()))
+        {
+            try {
+            throw std::runtime_error("ERROR: Undefined variable \'" + node.get_id() + "\' in loop-expression: \'" + node.get_id() + node.get_unary_op() + "\'");
+            } catch(std::runtime_error& e)
+            {
+                std::cerr << e.what() << "\n";
+                exit(EXIT_FAILURE);
+            }
+        }
+        p1.type = table[node.get_id()].type;
         table[node.get_id()+"_op" + "_" + std::to_string(table_level)] = p1;
     }
 }

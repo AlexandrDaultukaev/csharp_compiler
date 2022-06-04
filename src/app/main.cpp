@@ -2,6 +2,7 @@
 #include "grammar/CsharpParser.h"
 #include "grammar/CsharpBaseListener.h"
 #include "parser/parser.hpp"
+#include "semantic/semantic.hpp"
 //#include "parser/symbol_table/symbol_table.hpp"
 #include "CLI/CLI.hpp"
 #include "antlr4-runtime.h"

@@ -1,6 +1,12 @@
+float f;
+
 int main(int i)
 {
-    float f = "hggg";
-    float g = "hggg";
+    float f;
+    for(string j = 0; j < 24; f = 1)
+    {
+        print("hello", f);
+        print(f);
+    }
 
 }

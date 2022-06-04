@@ -243,13 +243,15 @@ void VisitorInitialiser::visit(ASTProgram &node) {
         // }
         //***********************************************************
         // Check if statement looks like "(int) a = b + (c)"
-        if (expr.as<CsharpParser::Assign_statementContext *>()->ASSIGN() !=
-            nullptr) {
+
+        //???? Depricated
+        // if (expr.as<CsharpParser::Assign_statementContext *>()->ASSIGN() !=
+        //     nullptr) {
 
           child2 = new ASTAssign;
           child2->accept(visitor);
           node.append_child(child2);
-        }
+        //}
       }
 
       if (expr.is<CsharpParser::If_statementContext *>()) {
@@ -364,6 +366,8 @@ void VisitorInitialiser::visit(ASTScope &node) {
         // }
         //**********************************************************
         // Check if statement looks like "(int) a = b + (c)"
+
+        //????
         // if (expr.as<CsharpParser::Assign_statementContext *>()->ASSIGN() !=
             // nullptr || expr.as<CsharpParser::Assign_statementContext *>()->var_def) {
           ASTNode *child2 = nullptr;
