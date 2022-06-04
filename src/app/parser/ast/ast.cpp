@@ -364,13 +364,13 @@ void VisitorInitialiser::visit(ASTScope &node) {
         // }
         //**********************************************************
         // Check if statement looks like "(int) a = b + (c)"
-        if (expr.as<CsharpParser::Assign_statementContext *>()->ASSIGN() !=
-            nullptr) {
+        // if (expr.as<CsharpParser::Assign_statementContext *>()->ASSIGN() !=
+            // nullptr || expr.as<CsharpParser::Assign_statementContext *>()->var_def) {
           ASTNode *child2 = nullptr;
           child2 = new ASTAssign;
           child2->accept(visitor);
           node.append_statement(child2);
-        }
+        // }
       }
       if (expr.is<CsharpParser::If_statementContext *>()) {
         VisitorInitialiser visitor(
@@ -457,33 +457,37 @@ void VisitorInitialiser::visit(ASTAssign &node) {
   } else {
     // Rvalue1
     delete f;
-    if (ctx->literal(lit_ind) != nullptr) {
-      SetLiteralVariable(r1, ctx->literal(lit_ind));
-      lit_ind++;
-    } else {
-      r1->set_var_name(ctx->ID(ind)->getText());
-      ind++;
-    }
-    r1->set_frag("RIGHT_ASSIGN1");
-    // Rvalue2
-    if (ctx->ID(ind) != nullptr) {
-      is_r2_set = true;
-      r2->set_var_name(ctx->ID(ind)->getText());
-      r2->set_frag("RIGHT_ASSIGN2");
-    } else if (ctx->literal(lit_ind) != nullptr) {
-      is_r2_set = true;
-      SetLiteralVariable(r2, ctx->literal(lit_ind));
-      r2->set_frag("LRIGHT_ASSIGN2");
+    if((ctx->ID(ind) != nullptr) || ctx->literal(lit_ind) != nullptr)
+    {
+      if (ctx->literal(lit_ind) != nullptr) {
+        SetLiteralVariable(r1, ctx->literal(lit_ind));
+        lit_ind++;
+      } else if(ctx->ID(ind) != nullptr) {
+        r1->set_var_name(ctx->ID(ind)->getText());
+        ind++;
+      }
+      r1->set_frag("RIGHT_ASSIGN1");
+      // Rvalue2
+      if (ctx->ID(ind) != nullptr) {
+        is_r2_set = true;
+        r2->set_var_name(ctx->ID(ind)->getText());
+        r2->set_frag("RIGHT_ASSIGN2");
+      } else if (ctx->literal(lit_ind) != nullptr) {
+        is_r2_set = true;
+        SetLiteralVariable(r2, ctx->literal(lit_ind));
+        r2->set_frag("LRIGHT_ASSIGN2");
+      }
+
+      node.set_rvalue1(r1);
+      if (is_r2_set) {
+        node.set_oper(ctx->BINARY_OP()->getText());
+        node.set_rvalue2(r2);
+      } else {
+        delete r2;
+        node.set_rvalue2(nullptr);
+      }
     }
 
-    node.set_rvalue1(r1);
-    if (is_r2_set) {
-      node.set_oper(ctx->BINARY_OP()->getText());
-      node.set_rvalue2(r2);
-    } else {
-      delete r2;
-      node.set_rvalue2(nullptr);
-    }
   }
 }
 
@@ -686,8 +690,9 @@ void VisitorTraverse::visit(ASTVariable &node) {
 
 void VisitorTraverse::visit(ASTAssign &node) {
   set_indent(node.get_depth());
-  stream << "<assign lhs=" << node.get_lvalue()->get_var_name() << ", rhs=";
+  stream << "<assign lhs=" << "(" << node.get_lvalue()->get_var_name() << ", " << node.get_lvalue()->get_var_type() << ")";
   if (node.get_rvalue1() != nullptr) {
+    stream << ", rhs=";
     if (node.get_rvalue2() != nullptr) {
       stream << "(" << node.get_rvalue1()->get_var_name() << ", "
              << node.get_rvalue2()->get_var_name() << "), op=\'" << node.get_oper()
@@ -706,6 +711,7 @@ void VisitorTraverse::visit(ASTAssign &node) {
     node.decrease_depth();
     node.set_dpsn(false);
   }
+  else { stream << "/>"; }
   if (!node.get_dpsn()) {
     stream << "\n";
   }

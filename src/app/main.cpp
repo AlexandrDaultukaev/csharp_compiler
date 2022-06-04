@@ -41,18 +41,19 @@ int main (int argc, const char * argv []) {
     // cs_lexer::dump_tokens(filepath, dump_tokens_key);
     // cs_lexer::dump_ast(filepath, xml_file, dump_ast);
     auto parse_result = cs_lang::parse_test(filepath);
-
     if (!parse_result.m_errors.empty()) {
         cs_lang::dump_errors(parse_result.m_errors);
         return -1;
     }
-    
+    VisitorTable visitor;
+    parse_result.m_program->accept(visitor);
     if (dump_ast || xml_file != "") {
         cs_lang::dump_ast(parse_result.m_program, xml_file, dump_ast);
     }
 
     if (dump_tab) {
-        cs_lang::dump_table(parse_result.m_program);
+        auto table = visitor.get_table();
+        cs_lang::dump_table(table);
     }
 
     if(dump_tokens_key) {

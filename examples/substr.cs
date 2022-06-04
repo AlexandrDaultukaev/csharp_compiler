@@ -1,5 +1,5 @@
-System.String s1 = "Hello World!";
-System.String s2 = "orl";
+string s1 = "Hello World!";
+string s2 = "orl";
 bool b = s1.Contains(s2);
 if (b)
 {

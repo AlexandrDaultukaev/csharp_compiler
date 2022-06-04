@@ -98,7 +98,7 @@ void VisitorTable::visit(ASTVariable& node)
         }
 
         //UNDEFINED VARIABLE ERROR
-        if(!table.contains(node.get_var_name()) && node.get_frag() == "LEFT_ASSIGN" && node.get_var_type() == "")
+        if(!table.contains(node.get_var_name()) && node.get_var_type() == "")
         {
             try {
                 throw std::runtime_error("ERROR: Undefined variable \'" + node.get_var_name() + "\'");
@@ -285,10 +285,8 @@ void VisitorTable::visit(ASTForCond& node)
 
 void VisitorTable::visit(ASTForOp& node)
 {
-    std::cout << "Before\n";
     if(node.get_assign() != nullptr)
     {
-        std::cout << "After\n";
         node.get_assign()->accept(*this);
     }
     else

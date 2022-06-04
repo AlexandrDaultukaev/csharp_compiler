@@ -69,10 +69,10 @@ void dump_ast(ASTProgram* program, std::string xml_file, bool print_key) {
     }
 }
 
-    void dump_table(ASTProgram* program) {
-        VisitorTable visitor;
-        program->accept(visitor);
-        for(auto& items : visitor.get_table())
+    void dump_table(std::map<std::string, Properties> table) {
+        // VisitorTable visitor;
+        // program->accept(visitor);
+        for(auto& items : table)
         {
             std::cout << std::setw(30) << items.first << std::setw(20) << items.second.type 
             << std::setw(3) << items.second.level << std::setw(20) << items.second.fragment_type << "\n";

@@ -66,7 +66,7 @@ void dump_errors(Errors& errors);
     };
     tokens_array dump_tokens(std::string filepath, int print_key=1);
     void dump_ast(ASTProgram* program, std::string xml_file, bool print_key);
-    void dump_table(ASTProgram* program);
+    void dump_table(std::map<std::string, Properties> table);
     ParseResult parse_test(std::string filepath);
 
 
