@@ -137,6 +137,7 @@ private:
     bool is_lit = false;
     std::string m_var_type = "";
     std::string ctx_type = "";
+    std::string func_name = "";
 
 public:
     ASTVariable() = default;
@@ -148,6 +149,8 @@ public:
     void set_var_name(std::string s) { m_var_name = s; }
     std::string get_var_type() { return m_var_type; }
     void set_var_type(std::string s) { m_var_type = s; }
+    std::string get_func_name() { return func_name; }
+    void set_func_name(std::string s) { func_name = s; }
     // std::string& var_name();
     // std::string& var_type();
     void set_literal(bool l) { is_lit = l;}
@@ -157,9 +160,12 @@ public:
 };
 
 class ASTFuncCall : public ASTNode {
+  using Args = std::vector<std::pair<std::string, std::string>>;
 private:
   std::string m_func_name;
   std::vector<ASTArgs *> args;
+  Args vector_args;
+  // ASTFunction* func_def;
   // std::vector<ASTVariable>
 
 public:
@@ -170,7 +176,10 @@ public:
   ASTArgs *get_arg(std::size_t i) { return args[i]; }
   void set_args(ASTArgs *a, size_t i) { args[i] = a; }
   void append_arg(ASTArgs *a) { args.push_back(a); }
-
+  // void set_func_def(ASTFunction* fd) { func_def = fd; }
+  // ASTFunction get_func_def() { return *func_def; }
+  void append_args_to_vector(std::string name, std::string type) { vector_args.push_back(std::make_pair(name, type)); }
+  Args get_args_from_vector() { return vector_args; }
   void accept(Visitor &visitor) override;
   ~ASTFuncCall() {
     for (std::size_t i = 0; i < args.size(); i++) {
@@ -340,10 +349,12 @@ public:
 };
 
 class ASTFunction : public ASTNode {
+  using Pars = std::vector<std::pair<std::string, std::string>>;
 private:
     /* Node info */
     std::string m_func_name;
     std::string m_return_type;
+    Pars pars;
     std::vector<ASTVariable*> params;
     ASTReturn* m_return = nullptr;
     ASTScope* m_scope = nullptr;
@@ -378,6 +389,8 @@ public:
     std::vector<ASTVariable*> get_params() { return params; }
 
     void append_param(ASTVariable* p) { params.push_back(p); }
+    void append_param_to_vector(std::string name, std::string type) { pars.push_back(std::make_pair(name, type)); }
+    Pars get_param_from_vector() { return pars; }
 };
 
 class ASTIf : public ASTNode {

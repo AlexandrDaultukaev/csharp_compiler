@@ -22,10 +22,16 @@ parser/symbol_table/symbol_table.hpp
 parser/symbol_table/symbol_table.cpp
 )
 
+add_library(semanticlib STATIC
+semantic/semantic.hpp
+semantic/semantic.cpp
+)
+
 include(CompileOptions)
 set_compile_options(${target_name})
 # set_compile_options(lexerlib)
 set_compile_options(parserlib)
+set_compile_options(semanticlib)
 
 target_include_directories(
   ${target_name}
@@ -51,7 +57,13 @@ target_include_directories(
       ${SRC_PATH}
 )
 
-
+target_include_directories(
+    semanticlib
+    PRIVATE
+      ${CMAKE_CURRENT_LIST_DIR}
+    PUBLIC
+      ${SRC_PATH}
+)
 
 
 # target_link_libraries(lexerlib antlr4_cpp_runtime)
@@ -62,11 +74,16 @@ target_link_libraries(parserlib antlr4_cpp_runtime)
 target_link_libraries(parserlib CLI11)
 target_link_libraries(parserlib gram)
 
+target_link_libraries(semanticlib antlr4_cpp_runtime)
+target_link_libraries(semanticlib CLI11)
+target_link_libraries(semanticlib gram)
+target_link_libraries(semanticlib parserlib)
 
 target_link_libraries(${target_name} antlr4_cpp_runtime)
 target_link_libraries(${target_name} CLI11)
 # target_link_libraries(${target_name} lexerlib)
 target_link_libraries(${target_name} parserlib)
+target_link_libraries(${target_name} semanticlib)
 
 
 

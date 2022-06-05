@@ -519,6 +519,7 @@ void VisitorInitialiser::visit(ASTFunction &node) {
     {
       auto param = new ASTVariable;
       param->set_ctx_type("PARS");
+      param->set_func_name(node.func_name());
       VisitorInitialiser visitor(pars_ctx->var_def(i));
       param->accept(visitor);
       node.append_param(param);

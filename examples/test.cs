@@ -1,3 +1,5 @@
+int func() { main(); }
+
 int main() { 
     float f;
     string s = "Hello";

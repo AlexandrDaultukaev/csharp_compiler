@@ -1,12 +1,11 @@
-float f;
 
-int main(int i)
+int func(string s, int i, float f, char c) {}
+
+float main(int i)
 {
-    float f;
-    for(string j = 0; j < 24; f = 1)
-    {
-        print("hello", f);
-        print(f);
-    }
-
+    string smain;
+    int imain;
+    float fmain;
+    char cmain;
+    func(smain, cmain, fmain, imain);
 }

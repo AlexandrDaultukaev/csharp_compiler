@@ -33,23 +33,33 @@ void VisitorTable::visit(ASTFunction& node)
 {
     Properties p;
     p.level = table_level;
-    p.fragment_type = "FUNCTION_DEF";
+    
     p.type = node.return_type();
-    table[node.func_name()] = p;
+    
     incr_level();
-
+    //std::string types = "(";
     for(auto& param : node.get_params())
     {
         param->accept(*this);
+        node.append_param_to_vector(param->get_var_name(), param->get_var_type());
+        //types += param->get_var_type() + ", ";
     }
-
+    set_fprop(node.func_name(), std::make_pair("", ""));
+    for(auto& param : node.get_param_from_vector())
+    {
+        set_fprop(node.func_name(), param);
+        //std::cout << "Params: " << param.first << " :: " << param.second << "\n";
+    }
+    //types += ")";
+    p.fragment_type = "FUNCTION_DEF";
+    table[node.func_name()] = p;
     for(auto& scope : node.get_scope()->get_statements())
     {
         scope->accept(*this);
     }
     if(node.get_return() != nullptr)
     {
-        Properties p_return;
+        // Properties p_return;
         p.level = table_level;
         if(node.get_return()->is_literal())
         {
@@ -59,8 +69,26 @@ void VisitorTable::visit(ASTFunction& node)
         {
             p.fragment_type = "RETURN_VARIABLE";
         }
-        p.type = node.get_return()->get_return_type();
-        table[node.get_return()->get_return_value()] = p;
+        auto return_type = node.get_return()->get_return_type();
+        if(return_type == "ID")
+        {
+            if(!table.contains(node.get_return()->get_return_value()))
+            {
+                try {
+                    throw std::runtime_error("ERROR: Undifined variable \'" + node.get_return()->get_return_value() + "\' in return-statement");
+                } catch(std::runtime_error& e)
+                {
+                    std::cerr << e.what() << "\n";
+                    exit(EXIT_FAILURE);
+                }
+            } else {
+                p.type = table[node.get_return()->get_return_value()].type;
+            }
+        }
+        else {
+            p.type = node.get_return()->get_return_type();
+        }
+        table[node.get_return()->get_return_value()+"_"+"return"+"_"+std::to_string(table_level)] = p;
     }
 
     decr_level();
@@ -120,7 +148,7 @@ void VisitorTable::visit(ASTVariable& node)
         }
         else
         {
-            p.fragment_type = "PVARIABLE";
+            p.fragment_type = "PVARIABLE_" + node.get_func_name();
         }
          // P(arameter)Variable
     }
@@ -132,21 +160,36 @@ void VisitorTable::visit(ASTVariable& node)
         p.type = "ASSIGN_ID";
         key = node.get_var_name() + "_" + std::to_string(table_level);
         table[key] = p;
-    }
+    } //else if(p.fragment_type == "PVARIABLE") {
+    //     key = key + "_" + node.get_func_name();
+    // }
     table[key] = p;
 }
+
 
 void VisitorTable::visit(ASTFuncCall& node) 
 {
     Properties p;
-    p.fragment_type = "FUNCTION_CALL";
+    
     p.level = table_level;
     p.type = "~";
-    table[node.func_name()] = p;
     for(auto& arg: node.get_args())
     {
         arg->accept(*this);
+        if(arg->is_literal())
+        {
+            node.append_args_to_vector(arg->get_arg(), get_literal_type(arg->get_arg()));
+        } else {
+            node.append_args_to_vector(arg->get_arg(), table[arg->get_arg()].type);
+        }
     }
+
+    for(auto& param : node.get_args_from_vector())
+    {
+        std::cout << "Args: " << param.first << " :: " << param.second << "\n";
+    }
+    p.fragment_type = "FUNCTION_CALL";
+    table[node.func_name()] = p;
 }
 
 void VisitorTable::visit(ASTScope& node)
@@ -159,6 +202,7 @@ void VisitorTable::visit(ASTScope& node)
 
 void VisitorTable::visit(ASTArgs& node)
 {
+    std::string key = "";
     Properties p;
     if(node.is_literal())
     {
@@ -168,11 +212,22 @@ void VisitorTable::visit(ASTArgs& node)
         {
             p.type = "TEXT";
         } else if(std::isdigit(node.get_arg()[0])) {
-            p.type = "NUMBER";
+            if(node.get_arg().find(std::string(".")) != std::string::npos)
+            {
+                p.type = "FLOAT_NUMBER";
+            } else {
+                p.type = "NUMBER";
+            }
+            
+        } else if(node.get_arg()[0] == std::string("\'")[0])
+        {
+            p.type = "CHAR";
         }
+        key = node.get_arg();
     }
     else {
         p.fragment_type = "ARGUMENT";
+        key = node.get_arg()+"_argument_"+std::to_string(table_level);
         if(!table.contains(node.get_arg()))
         {
             try {
@@ -188,7 +243,7 @@ void VisitorTable::visit(ASTArgs& node)
         }
     }
     p.level = table_level;
-    table[node.get_arg()+"_argument_"+std::to_string(table_level)] = p;
+    table[key] = p;
 
 }
 

@@ -26,9 +26,11 @@ int main (int argc, const char * argv []) {
     bool version_key = false;
     bool dump_ast = false;
     bool dump_tab = false;
+    bool dump_sem = false;
     app.add_flag("--dump-tokens", dump_tokens_key, "Dump func");
     app.add_flag("--dump-ast", dump_ast, "Dump ast");
     app.add_flag("--dump-table", dump_tab, "Dump table");
+    app.add_flag("--dump-semantic", dump_sem, "Dump semantic report");
     app.add_flag("--version", version_key, "Version func");
     auto fileflag = app.add_option("-f, --file", filepath, "Filepath");
     app.add_option("-x, --to-xml", xml_file, "Filepath XML");
@@ -59,6 +61,12 @@ int main (int argc, const char * argv []) {
 
     if(dump_tokens_key) {
         cs_lang::dump_tokens(filepath);
+    }
+    SemanticVisitor semantic_visitor(visitor.get_table(), visitor.get_fprops());
+    parse_result.m_program->accept(semantic_visitor);
+    if(dump_sem)
+    {
+        cs_lang::print_semantic_report(semantic_visitor);
     }
     
     return 0;
