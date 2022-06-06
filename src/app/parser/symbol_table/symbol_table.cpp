@@ -157,7 +157,7 @@ void VisitorTable::visit(ASTVariable& node)
     std::string key = node.get_var_name();
     if((node.get_frag() == "RIGHT_ASSIGN1" || node.get_frag() == "RIGHT_ASSIGN2") && p.fragment_type[0] != 'L')
     {
-        p.type = "ASSIGN_ID";
+        p.type = table[node.get_var_name()].type;
         key = node.get_var_name() + "_" + std::to_string(table_level);
         table[key] = p;
     } //else if(p.fragment_type == "PVARIABLE") {
@@ -289,12 +289,14 @@ void VisitorTable::visit(ASTIf& node)
     // p1.level = table_level;
     // p1.type = node.get_first_type();
     // table[node.get_first()] = p1;
-
-    // Properties p2;
-    // p2.fragment_type = "IFVARIABLE";
-    // p2.level = table_level;
-    // p2.type = node.get_second_type();
-    // table[node.get_second()] = p2;
+    if(node.is_literal())
+    {
+        Properties p2;
+        p2.fragment_type = "IFVARIABLE";
+        p2.level = table_level;
+        p2.type = node.get_second_type();
+        table[node.get_second()] = p2;
+    }
     incr_level();
     node.get_scope()->accept(*this);
     decr_level();

@@ -398,6 +398,7 @@ class ASTIf : public ASTNode {
   std::string first_type = "";
   std::string second = "";
   std::string second_type = "";
+  bool is_lit = false;
   std::string op = "";
   ASTScope *m_scope = nullptr;
 
@@ -408,6 +409,9 @@ public:
   void set_second(std::string s) { second = s; }
   void set_second_type(std::string s) { second_type = s; }
   void set_op(std::string s) { op = s; }
+
+  void set_literal(bool l) { is_lit = l; }
+  bool is_literal() { return is_lit; }
 
   std::string get_first() { return first; }
   std::string get_first_type() { return first_type; }

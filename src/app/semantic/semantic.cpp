@@ -154,19 +154,71 @@ void SemanticVisitor::visit(ASTAssign& node) {
                 }
                 if(table[node.get_lvalue()->get_var_name()].type != type_r2)
                 {
-                    errors.emplace_back(std::string("Cannot convert type \'" + node.get_lvalue()->get_var_type() + "\' to \'" + type_r2 + "\' in assign-statement\n"));
+                    errors.emplace_back(std::string("Cannot convert type \'" + table[node.get_lvalue()->get_var_name()].type + "\' to \'" + type_r2 + "\' in assign-statement\n"));
                 }
             }
         } else {
-            errors.emplace_back(std::string("Cannot convert type \'" + node.get_lvalue()->get_var_type() + "\' to \'" + type_r1 + "\' in assign-statement\n"));
+            errors.emplace_back(std::string("Cannot convert type \'" + table[node.get_lvalue()->get_var_name()].type + "\' to \'" + type_r1 + "\' in assign-statement\n"));
         }
     }
     
 }
 void SemanticVisitor::visit(ASTReturn& node) {}
-void SemanticVisitor::visit(ASTIf& node) {}
-void SemanticVisitor::visit(ASTFor& node) {}
-void SemanticVisitor::visit(ASTForCond& node) {}
-void SemanticVisitor::visit(ASTForOp& node) {}
+void SemanticVisitor::visit(ASTIf& node) {
+    std::string type_second_operand = "";
+    if(node.get_second() != "")
+    {
+        if(node.is_literal())
+        {
+            type_second_operand = get_literal_type(node.get_second());
+        } else {
+            type_second_operand = table[node.get_second()].type;
+        }
+
+        if(table[node.get_first()].type != type_second_operand)
+        {
+            errors.emplace_back(std::string("Operator \'" + node.get_op() + "\' cannot be applied to operands of type \'"+ table[node.get_first()].type + "\' to \'" + type_second_operand + "\' in if-statement\n"));
+        }
+    } else {
+        errors.emplace_back(std::string("Cannot implicitly convert type \'" + node.get_second_type() + "\' to \'bool\'"));
+    }
+    node.get_scope()->accept(*this);
+}
+void SemanticVisitor::visit(ASTFor& node) {
+    node.get_assing()->accept(*this);
+    node.get_cond()->accept(*this);
+    node.get_op()->accept(*this);
+    node.get_scope()->accept(*this);
+}
+void SemanticVisitor::visit(ASTForCond& node) {
+    std::string type_second_operand = "";
+    if(node.get_second() != "")
+    {
+        if(node.is_literal())
+        {
+            type_second_operand = get_literal_type(node.get_second());
+        } else {
+            type_second_operand = table[node.get_second()].type;
+        }
+    } else {
+        errors.emplace_back(std::string("Cannot implicitly convert type \'" + table[node.get_second()].type + "\' to \'bool\'\n"));
+    }
+    if(table[node.get_first()].type != "int" && table[node.get_first()].type != "float")
+    {
+        errors.emplace_back(std::string("Cannot iterate by type \'" + table[node.get_first()].type + "\'\n"));
+    }
+    
+}
+void SemanticVisitor::visit(ASTForOp& node) {
+    if(node.get_assign() != nullptr)
+    {
+        node.get_assign()->accept(*this);
+    } else {
+        if(table[node.get_id()].type != "int" && table[node.get_id()].type != "float")
+        {
+            errors.emplace_back(std::string("Operator \'" + node.get_unary_op() + "\' cannot be applied to operand of type \'"+ table[node.get_id()].type + "\' in for-statement\n"));
+        }
+    }
+}
 void SemanticVisitor::visit(ASTKw& node) {}
 

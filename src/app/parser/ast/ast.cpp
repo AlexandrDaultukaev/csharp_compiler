@@ -591,14 +591,16 @@ void VisitorInitialiser::visit(ASTIf &node) {
   node.set_first(ctx->ID(0)->getText());
   node.set_first_type("ID");
   if (ctx->ID().size() > 1) {
-    node.set_first(ctx->ID(1)->getText());
-    node.set_first_type("ID");
+    //FIXED set_first -> set_second
+    node.set_second(ctx->ID(1)->getText());
+    node.set_second_type("ID");
 
     node.set_op(ctx->LOGIC_OP()->getText());
 
   } else if (ctx->literal() != nullptr) {
     auto ctx_literal =
         visitLiteral(ctx->literal()).as<antlr4::tree::TerminalNode *>();
+    node.set_literal(true);
     node.set_second(ctx_literal->getText());
     if (ctx->literal()->NUMBER() != nullptr) {
       node.set_second_type("NUMBER");
