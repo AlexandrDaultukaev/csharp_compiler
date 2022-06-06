@@ -34,6 +34,26 @@ class SemanticVisitor : public Visitor {
   void visit(ASTForCond &node) override;
   void visit(ASTForOp &node) override;
   void visit(ASTKw &node) override;
+  std::string get_literal_type(std::string literal)
+  {
+    if(table[literal].type == "NUMBER")
+    {
+      return std::string("int");
+    }
+    if(table[literal].type == "FLOAT_NUMBER")
+    {
+      return std::string("float");
+    }
+    if(table[literal].type == "CHAR")
+    {
+      return std::string("char");
+    }
+    if(table[literal].type == "STRING" || table[literal].type == "TEXT")
+    {
+      return std::string("string");
+    }
+    return std::string("unknown");
+  }
 };
 
 namespace cs_lang {

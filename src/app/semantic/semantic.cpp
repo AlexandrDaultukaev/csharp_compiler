@@ -87,14 +87,6 @@ void SemanticVisitor::visit(ASTFuncCall& node) {
             exit(EXIT_FAILURE);
         }
     }
-    // std::vector<std::pair<std::string, std::string>> pars;
-    // for(auto const& [key, prop] : table)
-    // {
-    //     if(prop.fragment_type == std::string("PVARIABLE_"+node.func_name()))
-    //     {
-    //         pars.push_back(std::make_pair(key, prop.type));
-    //     }
-    // }
     int i = 0;
     if(node.get_args_from_vector().size() != f_props[node.func_name()].size())
     {
@@ -117,9 +109,60 @@ void SemanticVisitor::visit(ASTFuncCall& node) {
         i++;
     }
 }
-void SemanticVisitor::visit(ASTScope& node) {}
+void SemanticVisitor::visit(ASTScope& node) {
+    for(auto& child : node.get_statements())
+    {
+        child->accept(*this);
+    }
+}
 void SemanticVisitor::visit(ASTArgs& node) {}
-void SemanticVisitor::visit(ASTAssign& node) {}
+void SemanticVisitor::visit(ASTAssign& node) {
+    bool is_def = node.get_lvalue()->get_var_type() == ""? false : true;
+    if(node.get_rvalue1() != nullptr)
+    {
+        std::string type_r1 = "";
+        std::string type_r2 = "";
+        if(node.get_rvalue1()->is_literal())
+        {
+            type_r1 = get_literal_type(node.get_rvalue1()->get_var_name());
+        }
+        else
+        {
+            type_r1 = table[node.get_rvalue1()->get_var_name()].type;
+            //CHECK: 'string str = str;'
+            if(is_def && node.get_rvalue1()->get_var_name() == node.get_lvalue()->get_var_name())
+            {
+                errors.emplace_back(std::string("Use of unassigned local variable \'" + node.get_lvalue()->get_var_name() + "\'\n"));
+            }
+        }
+        if(table[node.get_lvalue()->get_var_name()].type == type_r1)
+        {
+            if(node.get_rvalue2() != nullptr)
+            {
+                if(node.get_rvalue2()->is_literal())
+                {
+                    type_r2 = get_literal_type(node.get_rvalue2()->get_var_name());
+                }
+                else
+                {
+                    type_r2 = table[node.get_rvalue2()->get_var_name()].type;
+                    //CHECK: 'string str = "10" + str;'
+                    if(is_def && node.get_rvalue2()->get_var_name() == node.get_lvalue()->get_var_name())
+                    {
+                        errors.emplace_back(std::string("Use of unassigned local variable \'" + node.get_lvalue()->get_var_name() + "\'\n"));
+                    }
+                }
+                if(table[node.get_lvalue()->get_var_name()].type != type_r2)
+                {
+                    errors.emplace_back(std::string("Cannot convert type \'" + node.get_lvalue()->get_var_type() + "\' to \'" + type_r2 + "\' in assign-statement\n"));
+                }
+            }
+        } else {
+            errors.emplace_back(std::string("Cannot convert type \'" + node.get_lvalue()->get_var_type() + "\' to \'" + type_r1 + "\' in assign-statement\n"));
+        }
+    }
+    
+}
 void SemanticVisitor::visit(ASTReturn& node) {}
 void SemanticVisitor::visit(ASTIf& node) {}
 void SemanticVisitor::visit(ASTFor& node) {}
