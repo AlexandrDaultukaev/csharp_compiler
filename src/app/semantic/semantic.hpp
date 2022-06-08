@@ -8,21 +8,23 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <utility>
 
 class SemanticVisitor : public Visitor {
   using Table = std::vector<std::map<std::string, Properties>>;
   using FunctionProp = std::map<std::string, std::vector<std::pair<std::string, std::string>>>;
   using Indexer = std::map<std::string, std::size_t>;
+  using Errors = std::vector<std::pair<std::string, std::string>>;
   private:
-    std::vector<std::string> errors;
+    Errors errors;
     Table table;
     FunctionProp f_props;
     Indexer fname_indexer;
   public:
   std::size_t get_fname_index(std::string s) { return fname_indexer[s]; }
   SemanticVisitor(Table t, FunctionProp p, Indexer fi) : table(t), f_props(p), fname_indexer(fi) {}
-  void append_error(std::string s) { errors.emplace_back(s); }
-  std::vector<std::string> get_errors() { return errors; }
+  void append_error(std::pair<std::string, std::string> s) { errors.emplace_back(s); }
+  Errors get_errors() { return errors; }
   int get_level(std::string str);
   void visit(ASTProgram &node) override;
   void visit(ASTFunction &node) override;

@@ -25,7 +25,7 @@ namespace cs_lang {
       {
         for(auto& i : sv.get_errors())
         {
-          std::cout << "Semantic error: " << i;
+					std::cout << i.first << ": " << i.second << "\n";
         }
       } else {
           std::cout << "Semantic errors not found\n";
@@ -88,7 +88,7 @@ void SemanticVisitor::visit(ASTFunction& node)
             [](unsigned char c){ return std::tolower(c); });
         if(ret_type != node.return_type())
         {
-            errors.emplace_back(std::string("Cannot convert type \'" + ret_type + "\' to \'" + node.return_type() + "\'\n"));
+            errors.emplace_back(std::make_pair("Function-Definition ERROR", "Cannot convert type \'" + ret_type + "\' to \'" + node.return_type() + "\'in line "+ std::to_string(node.get_line())));
         }
     }
 
@@ -115,7 +115,7 @@ void SemanticVisitor::visit(ASTFuncCall& node) {
     if(node.get_args_from_vector().size() != f_props[node.func_name()].size())
     {
         try {
-            throw std::runtime_error("ERROR: Incorrect number of arguments when calling a function \'" + node.func_name() + "\'\n");
+            throw std::runtime_error("ERROR: Incorrect number of arguments when calling a function \'" + node.func_name() + "\' in line" + std::to_string(node.get_line()));
         } catch(std::runtime_error& e)
         {
             std::cerr << e.what() << "\n";
@@ -128,7 +128,7 @@ void SemanticVisitor::visit(ASTFuncCall& node) {
         
         if(arg.second != f_props[node.func_name()][i].second)
         {
-            errors.emplace_back(std::string("Cannot convert type \'" + arg.second + "\' to \'" + f_props[node.func_name()][i].second + "\'\n"));
+            errors.emplace_back(std::make_pair("Function-Call ERROR", "Cannot convert type \'" + arg.second + "\' to \'" + f_props[node.func_name()][i].second + "\' in line "+ std::to_string(node.get_line())));
         }
         i++;
     }
@@ -164,7 +164,7 @@ void SemanticVisitor::visit(ASTAssign& node) {
             //CHECK: 'string str = str;'
             if(is_def && node.get_rvalue1()->get_var_name() == node.get_lvalue()->get_var_name())
             {
-                errors.emplace_back(std::string("Use of unassigned local variable \'" + node.get_lvalue()->get_var_name() + "\'\n"));
+                errors.emplace_back(std::make_pair("Assign ERROR", "Use of unassigned local variable \'" + node.get_lvalue()->get_var_name() + "\' in line "+ std::to_string(node.get_line())));
             }
         }
         if(lhs_type == type_r1)
@@ -181,16 +181,16 @@ void SemanticVisitor::visit(ASTAssign& node) {
                     //CHECK: 'string str = "10" + str;'
                     if(is_def && node.get_rvalue2()->get_var_name() == node.get_lvalue()->get_var_name())
                     {
-                        errors.emplace_back(std::string("Use of unassigned local variable \'" + node.get_lvalue()->get_var_name() + "\'\n"));
+                        errors.emplace_back(std::make_pair("Assign ERROR", "Use of unassigned local variable \'" + node.get_lvalue()->get_var_name() + "in line "+ std::to_string(node.get_line()) + "\'"));
                     }
                 }
                 if(lhs_type != type_r2)
                 {
-                    errors.emplace_back(std::string("Cannot convert type \'" + lhs_type + "\' to \'" + type_r2 + "\' in assign-statement\n"));
+                    errors.emplace_back(std::make_pair("Assign ERROR", "Cannot convert type \'" + lhs_type + "\' to \'" + type_r2 + "\' in line "+ std::to_string(node.get_lvalue()->get_line())));
                 }
             }
         } else {
-            errors.emplace_back(std::string("Cannot convert type \'" + lhs_type + "\' to \'" + type_r1 + "\' in assign-statement\n"));
+            errors.emplace_back(std::make_pair("Assign ERROR", "Cannot convert type \'" + lhs_type + "\' to \'" + type_r1 + "\' in line "+ std::to_string(node.get_lvalue()->get_line())));
         }
     }
     
@@ -209,10 +209,10 @@ void SemanticVisitor::visit(ASTIf& node) {
 
         if(table[get_fname_index(current_function_scope)][node.get_first()].type != type_second_operand)
         {
-            errors.emplace_back(std::string("Operator \'" + node.get_op() + "\' cannot be applied to operands of type \'"+ table[get_fname_index(current_function_scope)][node.get_first()].type + "\' to \'" + type_second_operand + "\' in if-statement\n"));
+            errors.emplace_back(std::make_pair("If ERROR", "Operator \'" + node.get_op() + "\' cannot be applied to operands of type \'"+ table[get_fname_index(current_function_scope)][node.get_first()].type + "\' to \'" + type_second_operand + "\' in line "+ std::to_string(node.get_line())));
         }
     } else {
-        errors.emplace_back(std::string("Cannot implicitly convert type \'" + node.get_second_type() + "\' to \'bool\'"));
+        errors.emplace_back(std::make_pair("If ERROR", "Cannot implicitly convert type \'" + node.get_second_type() + "\' to \'bool\' in line "+ std::to_string(node.get_line())));
     }
     node.get_scope()->accept(*this);
 }
@@ -233,11 +233,11 @@ void SemanticVisitor::visit(ASTForCond& node) {
             type_second_operand = table[get_fname_index(current_function_scope)][node.get_second()].type;
         }
     } else {
-        errors.emplace_back(std::string("Cannot implicitly convert type \'" + table[get_fname_index(current_function_scope)][node.get_second()].type + "\' to \'bool\'\n"));
+        errors.emplace_back(std::make_pair("For-condition ERROR","Cannot implicitly convert type \'" + table[get_fname_index(current_function_scope)][node.get_second()].type + "\' to \'bool\' in line "+ std::to_string(node.get_line())));
     }
     if(table[get_fname_index(current_function_scope)][node.get_first()].type != "int" && table[get_fname_index(current_function_scope)][node.get_first()].type != "float")
     {
-        errors.emplace_back(std::string("Cannot iterate by type \'" + table[get_fname_index(current_function_scope)][node.get_first()].type + "\'\n"));
+        errors.emplace_back(std::make_pair("For-condition ERROR", "Cannot iterate by type \'" + table[get_fname_index(current_function_scope)][node.get_first()].type + "\' in line "+ std::to_string(node.get_line())));
     }
     
 }
@@ -248,7 +248,7 @@ void SemanticVisitor::visit(ASTForOp& node) {
     } else {
         if(table[get_fname_index(current_function_scope)][node.get_id()].type != "int" && table[get_fname_index(current_function_scope)][node.get_id()].type != "float")
         {
-            errors.emplace_back(std::string("Operator \'" + node.get_unary_op() + "\' cannot be applied to operand of type \'"+ table[get_fname_index(current_function_scope)][node.get_id()].type + "\' in for-statement\n"));
+            errors.emplace_back(std::make_pair("For-operation ERROR","Operator \'" + node.get_unary_op() + "\' cannot be applied to operand of type \'"+ table[get_fname_index(current_function_scope)][node.get_id()].type + "\' in line "+ std::to_string(node.get_line())));
         }
     }
 }

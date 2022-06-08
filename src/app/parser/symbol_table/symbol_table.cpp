@@ -210,10 +210,10 @@ void VisitorTable::visit(ASTFuncCall& node)
         }
     }
 
-    for(auto& param : node.get_args_from_vector())
-    {
-        std::cout << "Args: " << param.first << " :: " << param.second << "\n";
-    }
+    // for(auto& param : node.get_args_from_vector())
+    // {
+    //     std::cout << "Args: " << param.first << " :: " << param.second << "\n";
+    // }
     p.fragment_type = "FUNCTION_CALL";
     table[get_fname_index(current_function)][node.func_name()] = p;
 }

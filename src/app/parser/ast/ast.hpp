@@ -76,7 +76,8 @@ class ASTNode {
 protected:
   static inline std::size_t m_depth = 0;
   static inline bool dpsn = false;
-
+  std::size_t line = 0;
+  std::size_t char_pos = 0;
 public:
   virtual ~ASTNode() = default;
   static void increase_depth() { m_depth += 2; }
@@ -85,6 +86,10 @@ public:
       m_depth -= 2;
     }
   }
+  void set_line(std::size_t l) { line = l; }
+  std::size_t get_line() { return line; }
+  void set_char_pos(std::size_t cp) { char_pos = cp; }
+  std::size_t get_char_pos() { return char_pos; } 
   static void set_depth(std::size_t d) { m_depth = d; }
   static void set_dpsn(bool d) { dpsn = d; }
   static bool get_dpsn() { return dpsn; }

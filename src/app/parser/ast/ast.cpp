@@ -280,6 +280,7 @@ void VisitorInitialiser::visit(ASTFor &node) {
   ASTForOp *for_op = new ASTForOp;
   ASTScope *scope = new ASTScope;
 
+  node.set_line(ctx->FOR()->getSymbol()->getLine());
   VisitorInitialiser visitor(ctx->assign_statement());
   for_assign->accept(visitor);
   node.set_assing(for_assign);
@@ -300,6 +301,8 @@ void VisitorInitialiser::visit(ASTFor &node) {
 void VisitorInitialiser::visit(ASTForCond &node) {
 
   auto ctx = m_context.as<CsharpParser::For_conditionContext *>();
+
+  node.set_line(ctx->ID(0)->getSymbol()->getLine());
   node.set_first(ctx->ID(0)->getText());
   node.set_op(ctx->LOGIC_OP()->getText());
   if (ctx->ID().size() > 1) {
@@ -320,6 +323,8 @@ void VisitorInitialiser::visit(ASTForOp &node) {
     asgn->accept(visitor);
     node.set_assign(asgn);
   } else {
+
+    node.set_line(ctx->ID()->getSymbol()->getLine());
     node.set_id(ctx->ID()->getText());
     node.set_unary_op(ctx->UNARYMATHEXP()->getText());
   }
@@ -410,6 +415,8 @@ void VisitorInitialiser::visit(ASTArgs &node) {
   {
     node.set_literal(true);
   }
+
+  node.set_line(ctx->getSymbol()->getLine());
   node.set_arg(ctx->getText());
 }
 
@@ -445,18 +452,28 @@ void VisitorInitialiser::visit(ASTAssign &node) {
   // Lvalue
   if (ctx->var_def() == nullptr) {
     l->set_var_name(ctx->ID(ind)->getText());
+    l->set_line(ctx->ID(0)->getSymbol()->getLine());
+
     ind++;
   } else {
     l->set_var_name(ctx->var_def()->ID()->getText());
     l->set_var_type(ctx->var_def()->VAR()->getText());
+    l->set_line(ctx->var_def()->ID()->getSymbol()->getLine());
+
   }
   l->set_frag("LEFT_ASSIGN");
+
+  r1->set_line(l->get_line());
+
+  r2->set_line(l->get_line());
   node.set_lvalue(l);
 
   // FuncCall, like 'bool b = s1.Contains(s2);'
   if (ctx->func_call() != nullptr) {
     VisitorInitialiser visitor(ctx->func_call());
     f->accept(visitor);
+
+    f->set_line(ctx->func_call()->ID()->getSymbol()->getLine());
     node.set_funccall(f);
   } else {
     // Rvalue1
@@ -497,6 +514,8 @@ void VisitorInitialiser::visit(ASTAssign &node) {
 
 void VisitorInitialiser::visit(ASTFunction &node) {
   auto ctx = m_context.as<CsharpParser::Func_defContext *>();
+
+  node.set_line(ctx->ID()->getSymbol()->getLine());
   if (ctx->scope() != nullptr) {
     auto child = new ASTScope;
     VisitorInitialiser visitor(ctx->scope());
@@ -535,14 +554,24 @@ void VisitorInitialiser::visit(ASTReturn &node) {
   auto ret_ctx = visitReturn_statement(ctx);
   node.set_return_value(ret_ctx.as<antlr4::tree::TerminalNode *>()->getText());
   if (ctx->ID() != nullptr) {
+
+    node.set_line(ctx->ID()->getSymbol()->getLine());
     node.set_return_type("ID");
   } else if (ctx->literal()->NUMBER() != nullptr) {
+
+    node.set_line(ctx->literal()->NUMBER()->getSymbol()->getLine());
     node.set_return_type("NUMBER");
   } else if (ctx->literal()->CHARv() != nullptr) {
+
+    node.set_line(ctx->literal()->CHARv()->getSymbol()->getLine());
     node.set_return_type("CHAR");
   } else if (ctx->literal()->FLOAT_NUMBER() != nullptr) {
+
+    node.set_line(ctx->literal()->FLOAT_NUMBER()->getSymbol()->getLine());
     node.set_return_type("FLOAT");
   } else if (ctx->literal()->TEXT() != nullptr) {
+
+    node.set_line(ctx->literal()->TEXT()->getSymbol()->getLine());
     node.set_return_type("STRING");
   }
   node.set_literal((ctx->ID() == nullptr));
@@ -557,15 +586,19 @@ void VisitorInitialiser::visit(ASTVariable &node) {
       node.set_var_name(ctx->var_def()->ID()->getText());
       node.set_var_type(ctx->var_def()->VAR()->getText());
 
+      node.set_line(ctx->var_def()->ID()->getSymbol()->getLine());
     } else {
       node.set_var_type("");
 
+      node.set_line(ctx->ID()[0]->getSymbol()->getLine());
       node.set_var_name(ctx->ID()[0]->getText());
     }
   }
   if(node.get_ctx_type() == "PARS")
   {
       auto ctx = m_context.as<CsharpParser::Var_defContext *>();
+
+      node.set_line(ctx->ID()->getSymbol()->getLine());
       node.set_var_name(ctx->ID()->getText());
       node.set_var_type(ctx->VAR()->getText());
   }
@@ -575,7 +608,9 @@ void VisitorInitialiser::visit(ASTVariable &node) {
 void VisitorInitialiser::visit(ASTFuncCall &node) {
   auto ctx = m_context.as<CsharpParser::Func_callContext *>();
   node.func_name() =
-      ctx->ID()->getText(); // TODO: Console.Writeln() -> Console/Writeln/args
+      ctx->ID()->getText();
+
+  node.set_line(ctx->ID()->getSymbol()->getLine());
   if (ctx->args() != nullptr) {
     for (std::size_t i = 0; i < ctx->args()->arg().size(); i++) {
       auto child = new ASTArgs;
@@ -589,6 +624,8 @@ void VisitorInitialiser::visit(ASTFuncCall &node) {
 void VisitorInitialiser::visit(ASTIf &node) {
   auto ctx = m_context.as<CsharpParser::If_statementContext *>();
   node.set_first(ctx->ID(0)->getText());
+
+  node.set_line(ctx->ID(0)->getSymbol()->getLine());
   node.set_first_type("ID");
   if (ctx->ID().size() > 1) {
     //FIXED set_first -> set_second
