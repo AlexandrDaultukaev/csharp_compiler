@@ -55,14 +55,13 @@ int main (int argc, const char * argv []) {
     }
 
     if (dump_tab) {
-        auto table = visitor.get_table();
-        cs_lang::dump_table(table);
+        cs_lang::dump_table(visitor);
     }
 
     if(dump_tokens_key) {
         cs_lang::dump_tokens(filepath);
     }
-    SemanticVisitor semantic_visitor(visitor.get_table(), visitor.get_fprops());
+    SemanticVisitor semantic_visitor(visitor.get_table(), visitor.get_fprops(), visitor.get_indexer());
     parse_result.m_program->accept(semantic_visitor);
     if(dump_sem)
     {

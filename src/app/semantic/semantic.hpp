@@ -10,17 +10,20 @@
 #include <vector>
 
 class SemanticVisitor : public Visitor {
-  using Table = std::map<std::string, Properties>;
+  using Table = std::vector<std::map<std::string, Properties>>;
   using FunctionProp = std::map<std::string, std::vector<std::pair<std::string, std::string>>>;
+  using Indexer = std::map<std::string, std::size_t>;
   private:
     std::vector<std::string> errors;
     Table table;
     FunctionProp f_props;
+    Indexer fname_indexer;
   public:
-    SemanticVisitor(Table t, FunctionProp p) { table = t; f_props = p; }
-    void append_error(std::string s) { errors.emplace_back(s); }
-    std::vector<std::string> get_errors() { return errors; }
-    int get_level(std::string str);
+  std::size_t get_fname_index(std::string s) { return fname_indexer[s]; }
+  SemanticVisitor(Table t, FunctionProp p, Indexer fi) : table(t), f_props(p), fname_indexer(fi) {}
+  void append_error(std::string s) { errors.emplace_back(s); }
+  std::vector<std::string> get_errors() { return errors; }
+  int get_level(std::string str);
   void visit(ASTProgram &node) override;
   void visit(ASTFunction &node) override;
   void visit(ASTVariable &node) override;
@@ -34,26 +37,7 @@ class SemanticVisitor : public Visitor {
   void visit(ASTForCond &node) override;
   void visit(ASTForOp &node) override;
   void visit(ASTKw &node) override;
-  std::string get_literal_type(std::string literal)
-  {
-    if(table[literal].type == "NUMBER")
-    {
-      return std::string("int");
-    }
-    if(table[literal].type == "FLOAT_NUMBER")
-    {
-      return std::string("float");
-    }
-    if(table[literal].type == "CHAR")
-    {
-      return std::string("char");
-    }
-    if(table[literal].type == "STRING" || table[literal].type == "TEXT")
-    {
-      return std::string("string");
-    }
-    return std::string("unknown");
-  }
+  std::string get_literal_type(std::string literal);
 };
 
 namespace cs_lang {

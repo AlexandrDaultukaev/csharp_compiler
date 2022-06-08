@@ -69,14 +69,15 @@ void dump_ast(ASTProgram* program, std::string xml_file, bool print_key) {
     }
 }
 
-    void dump_table(std::map<std::string, Properties> table) {
+    void dump_table(VisitorTable table) {
         // VisitorTable visitor;
         // program->accept(visitor);
-        for(auto& items : table)
-        {
-            std::cout << std::setw(30) << items.first << std::setw(20) << items.second.type 
-            << std::setw(3) << items.second.level << std::setw(20) << items.second.fragment_type << "\n";
-        }
+        table.print_table();
+        // for(auto& items : table)
+        // {
+        //     std::cout << std::setw(30) << items.first << std::setw(20) << items.second.type 
+        //     << std::setw(3) << items.second.level << std::setw(20) << items.second.fragment_type << "\n";
+        // }
     }
 
     tokens_array dump_tokens(std::string filepath, int print_key) {

@@ -18,13 +18,15 @@ struct Properties {
 };
 
 class VisitorTable : public Visitor {
-    using Table = std::map<std::string, Properties>;
+    using Table = std::vector<std::map<std::string, Properties>>;
     using FunctionProp = std::map<std::string, std::vector<std::pair<std::string, std::string>>>;
+    using Indexer = std::map<std::string, std::size_t>;
 private:
   Table table;
   FunctionProp f_props;
 	static std::size_t table_level;
-  
+  static std::size_t vector_num;
+  Indexer fname_indexer;
 public:
   VisitorTable() = default;
 
@@ -38,26 +40,28 @@ public:
     else {
       f_props[f_name].push_back(p); 
     } 
-    
   }
-	void set_symbol(std::string s, Properties p)  { table[s] = p; }
+  Indexer get_indexer() { return fname_indexer; }
+  std::size_t get_fname_index(std::string s) { return fname_indexer[s]; }
+  void set_fname_index(std::string s) { fname_indexer[s] = vector_num++; }
+	//void set_symbol(std::string s, Properties p)  { table[s] = p; }
 	static void incr_level() { table_level++; }
 	static void decr_level() { table_level--; }
-  std::string get_literal_type(std::string literal)
+  std::string get_literal_type(std::string literal, std::string func_name)
   {
-    if(table[literal].type == "NUMBER")
+    if(table[get_fname_index(func_name)][literal].type == "NUMBER")
     {
       return std::string("int");
     }
-    if(table[literal].type == "FLOAT_NUMBER")
+    if(table[get_fname_index(func_name)][literal].type == "FLOAT_NUMBER")
     {
       return std::string("float");
     }
-    if(table[literal].type == "CHAR")
+    if(table[get_fname_index(func_name)][literal].type == "CHAR")
     {
       return std::string("char");
     }
-    if(table[literal].type == "STRING" || table[literal].type == "TEXT")
+    if(table[get_fname_index(func_name)][literal].type == "STRING" || table[get_fname_index(func_name)][literal].type == "TEXT")
     {
       return std::string("string");
     }
@@ -65,9 +69,28 @@ public:
   }
 
   void print_table() { 
-    for(auto it = table.begin(); it != table.end(); it++)
+    for(std::size_t i = 0; i < table.size(); i++)
     {
-      std::cout << std::setw(5) << it->first << std::setw(10) << it->second.type << ", " << it->second.level << "\n";
+      if(i == 0)
+      {
+        std::cout << "Scope: Global\n";
+        
+      }
+      else {
+        for(auto it_func = f_props.begin(); it_func != f_props.end(); it_func++)
+          {
+            if(get_fname_index(it_func->first) == i)
+            {
+              std::cout << "Scope: " << it_func->first << "\n";
+              break;
+            }
+          }
+      }
+      
+      for(auto it_map = table[i].begin(); it_map != table[i].end(); it_map++)
+      {
+        std::cout << std::setw(30) << it_map->first << std::setw(20) << it_map->second.type << std::setw(3) << it_map->second.level << std::setw(20) << it_map->second.fragment_type << "\n";
+      }
     }
     
   }
