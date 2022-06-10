@@ -88,6 +88,10 @@ antlrcpp::Any Visitor::visitIf_statement(CsharpParser::If_statementContext *cont
   return antlrcpp::Any(context);
 }
 
+antlrcpp::Any Visitor::visitElse_statement(CsharpParser::Else_statementContext *context) {
+  return antlrcpp::Any(context);
+}
+
 antlrcpp::Any Visitor::visitLiteral(CsharpParser::LiteralContext *context) {
   if (context->NUMBER()) {
     return antlrcpp::Any(context->NUMBER());
@@ -201,6 +205,7 @@ void ASTArgs::accept(Visitor &visitor) { visitor.visit(*this); }
 
 void ASTReturn::accept(Visitor &visitor) { visitor.visit(*this); }
 void ASTIf::accept(Visitor &visitor) { visitor.visit(*this); }
+void ASTElse::accept(Visitor &visitor) { visitor.visit(*this); }
 
 VisitorInitialiser::VisitorInitialiser(antlrcpp::Any context)
     : m_context(context) {}
@@ -294,6 +299,7 @@ void VisitorInitialiser::visit(ASTFor &node) {
   node.set_op(for_op);
 
   VisitorInitialiser visitor_scope(ctx->scope());
+  scope->set_scope_name("for");
   scope->accept(visitor_scope);
   node.set_scope(scope);
 }
@@ -378,7 +384,26 @@ void VisitorInitialiser::visit(ASTScope &node) {
           ASTNode *child2 = nullptr;
           child2 = new ASTAssign;
           child2->accept(visitor);
-          node.append_statement(child2);
+          if(static_cast<ASTAssign*>(child2)->get_lvalue() != nullptr)
+          {
+            if(node.get_scope_name() == "if")
+            {
+              static_cast<ASTAssign*>(child2)->get_lvalue()->set_expr_type("if");
+            } else if(node.get_scope_name() == "else")
+            {
+              static_cast<ASTAssign*>(child2)->get_lvalue()->set_expr_type("else");
+            } else if(node.get_scope_name() == "for")
+            {
+              static_cast<ASTAssign*>(child2)->get_lvalue()->set_expr_type("for");
+            }
+            if(static_cast<ASTAssign*>(child2)->get_lvalue()->get_var_type() != "")
+            {
+              auto lvalue = static_cast<ASTAssign*>(child2)->get_lvalue();
+              node.append_var(lvalue->get_var_name(), lvalue->get_var_type());
+            }
+            node.append_statement(child2);
+          }
+
         // }
       }
       if (expr.is<CsharpParser::If_statementContext *>()) {
@@ -621,6 +646,21 @@ void VisitorInitialiser::visit(ASTFuncCall &node) {
   }
 }
 
+void VisitorInitialiser::visit(ASTElse &node) {
+  auto ctx = m_context.as<CsharpParser::Else_statementContext *>();
+  //OPTIMIZE
+  if(ctx->scope() != nullptr)
+  {
+    auto else_scope = new ASTScope;
+    VisitorInitialiser visitor(ctx->scope());
+    else_scope->set_scope_name("else");
+    else_scope->accept(visitor);
+    node.set_scope(else_scope);
+    
+  }
+  node.set_line(ctx->CRB()->getSymbol()->getLine());
+}
+
 void VisitorInitialiser::visit(ASTIf &node) {
   auto ctx = m_context.as<CsharpParser::If_statementContext *>();
   node.set_first(ctx->ID(0)->getText());
@@ -653,9 +693,16 @@ void VisitorInitialiser::visit(ASTIf &node) {
   if (ctx->scope() != nullptr) {
     auto child = new ASTScope;
     VisitorInitialiser visitor(ctx->scope());
+    child->set_scope_name("if");
     child->accept(visitor);
-    child->set_scope_name("if" + node.get_first());
     node.set_scope(child);
+  }
+  if(ctx->else_statement() != nullptr)
+  {
+    auto else_stat = new ASTElse;
+    VisitorInitialiser visitor(ctx->else_statement());
+    else_stat->accept(visitor);
+    node.set_else(else_stat);
   }
 }
 
@@ -809,6 +856,10 @@ void VisitorTraverse::visit(ASTIf &node) {
     node.get_scope()->accept(*this);
     node.decrease_depth();
   }
+  if(node.get_else() != nullptr)
+  {
+    node.get_else()->accept(*this);
+  }
 }
 
 void VisitorTraverse::visit(ASTReturn &node) {
@@ -826,6 +877,15 @@ void VisitorTraverse::visit(ASTForOp &node) {
     stream << ", operation=(" << node.get_id() << node.get_unary_op()
            << ")/>\n";
   }
+}
+
+void VisitorTraverse::visit(ASTElse &node)
+{
+  set_indent(node.get_depth());
+  stream << "<else>\n";
+  node.increase_depth();
+  node.get_scope()->accept(*this);
+  node.decrease_depth();
 }
 
 void VisitorTraverse::visit(ASTForCond &node) {

@@ -107,5 +107,6 @@ public:
   void visit(ASTFor &node) override;
   void visit(ASTForCond &node) override;
   void visit(ASTForOp &node) override;
+  void visit(ASTElse &node) override;
   void visit(ASTKw &node) {};
 };

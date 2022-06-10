@@ -1,21 +1,18 @@
 
 
 int sm;
-
 int func(string s, int i, float f, char c) {
     int a;
-    string smain;
+    int smain;
 }
 
 float main(int i)
 {
-    int smain;
-    sm = 10 + smain;
-    if(smain > i)
+    int sm;
+    sm = 10 + i;
+    
+    for(sm; sm < sm; sm++)
     {
-        for(smain; smain > i; smain++)
-        {
-
-        }
+        sm =2;
     }
 }

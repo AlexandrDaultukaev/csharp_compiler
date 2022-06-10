@@ -2,6 +2,7 @@
 #include "grammar/CsharpParser.h"
 #include "grammar/CsharpBaseListener.h"
 #include "parser/parser.hpp"
+#include "optimizer/optimizer.hpp"
 #include "semantic/semantic.hpp"
 //#include "parser/symbol_table/symbol_table.hpp"
 #include "CLI/CLI.hpp"
@@ -27,11 +28,15 @@ int main (int argc, const char * argv []) {
     bool dump_ast = false;
     bool dump_tab = false;
     bool dump_sem = false;
+    bool optim1 = false;
+    bool wall = false;
     app.add_flag("--dump-tokens", dump_tokens_key, "Dump func");
     app.add_flag("--dump-ast", dump_ast, "Dump ast");
     app.add_flag("--dump-table", dump_tab, "Dump table");
     app.add_flag("--dump-semantic", dump_sem, "Dump semantic report");
     app.add_flag("--version", version_key, "Version func");
+    app.add_flag("--opt", optim1, "Unable optimization");
+    app.add_flag("--wall", wall, "Warnings info");
     auto fileflag = app.add_option("-f, --file", filepath, "Filepath");
     app.add_option("-x, --to-xml", xml_file, "Filepath XML");
     fileflag->needs(fileflag);
@@ -50,9 +55,7 @@ int main (int argc, const char * argv []) {
     }
     VisitorTable visitor;
     parse_result.m_program->accept(visitor);
-    if (dump_ast || xml_file != "") {
-        cs_lang::dump_ast(parse_result.m_program, xml_file, dump_ast);
-    }
+
 
     if (dump_tab) {
         cs_lang::dump_table(visitor);
@@ -66,6 +69,14 @@ int main (int argc, const char * argv []) {
     if(dump_sem)
     {
         cs_lang::print_semantic_report(semantic_visitor);
+    }
+    if(optim1 || wall)
+    {
+        OptimizerVisitor visitor_optimizer(visitor.get_table(), visitor.get_indexer(), wall, optim1);
+        parse_result.m_program->accept(visitor_optimizer);
+    }
+    if (dump_ast || xml_file != "") {
+        cs_lang::dump_ast(parse_result.m_program, xml_file, dump_ast);
     }
     
     return 0;

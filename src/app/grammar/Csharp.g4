@@ -169,7 +169,8 @@ args: (arg (COMMA arg)*)?;
 arg: (ID | literal);
 pars: (var_def (COMMA var_def)*)?;
 if_statement:
-	IF RLP ID (LOGIC_OP (ID | literal))? RRP CLB scope CRB;
+	IF RLP ID (LOGIC_OP (ID | literal))? RRP CLB scope CRB (else_statement)?;
+else_statement: ELSE CLB scope CRB;
 for_statement: FOR RLP assign_statement SEMICOLON for_condition SEMICOLON for_operation RRP CLB scope CRB;
 for_condition: ID LOGIC_OP (ID | literal);
 for_operation: (ID UNARYMATHEXP) | assign_statement;

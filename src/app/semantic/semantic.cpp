@@ -16,7 +16,7 @@
 // ASTForCond ASTForOp
 // ASTKw
 
-std::string current_function_scope = "Global";
+static std::string current_function_scope = "Global";
 
 namespace cs_lang {
   void print_semantic_report(SemanticVisitor sv) 
@@ -139,6 +139,12 @@ void SemanticVisitor::visit(ASTScope& node) {
         child->accept(*this);
     }
 }
+
+void SemanticVisitor::visit(ASTElse &node) 
+{
+    node.get_scope()->accept(*this);
+}
+
 void SemanticVisitor::visit(ASTArgs& node) {}
 void SemanticVisitor::visit(ASTAssign& node) {
     bool is_def = node.get_lvalue()->get_var_type() == ""? false : true;
@@ -215,6 +221,10 @@ void SemanticVisitor::visit(ASTIf& node) {
         errors.emplace_back(std::make_pair("If ERROR", "Cannot implicitly convert type \'" + node.get_second_type() + "\' to \'bool\' in line "+ std::to_string(node.get_line())));
     }
     node.get_scope()->accept(*this);
+    if(node.get_else() != nullptr)
+    {
+        node.get_else()->accept(*this);
+    }
 }
 void SemanticVisitor::visit(ASTFor& node) {
     node.get_assing()->accept(*this);

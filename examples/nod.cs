@@ -9,7 +9,6 @@ for (int i = a; i > 0; i--)
         res = b % i;
         if (res == 0)
         {
-            System.Console.WriteLine(i);
             break;
         }
     }

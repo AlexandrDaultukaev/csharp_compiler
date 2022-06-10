@@ -21,7 +21,8 @@
 
 std::size_t VisitorTable::table_level = 0;
 std::size_t VisitorTable::vector_num = 0;
-std::string current_function = "Global";
+static std::string current_function = "Global";
+std::size_t expr_counter = 0;
 
 void VisitorTable::visit(ASTProgram& node)
 {
@@ -36,6 +37,7 @@ void VisitorTable::visit(ASTProgram& node)
 
 void VisitorTable::visit(ASTFunction& node)
 {
+    expr_counter = 0;
     Properties p;
     p.level = table_level;
     current_function = node.func_name();
@@ -117,19 +119,34 @@ void VisitorTable::visit(ASTVariable& node)
         }
         else
         {
-            p.fragment_type = "VARIABLE";
+            if(node.get_expr_type() == "for")
+            {
+                p.fragment_type = "FORVARIABLE"+std::to_string(expr_counter);    
+            } else if(node.get_expr_type() == "if") {
+                p.fragment_type = "IFVARIABLE"+std::to_string(expr_counter);
+            } else if(node.get_expr_type() == "else") {
+                p.fragment_type = "ELSEVARIABLE"+std::to_string(expr_counter);
+            } else {
+                p.fragment_type = "VARIABLE";
+            }
+            
         }
         //REDEFINITION ERROR
-        if(table[get_fname_index(current_function)].contains(node.get_var_name()) && node.get_frag() == "LEFT_ASSIGN" && node.get_var_type() != "" && table_level == table[get_fname_index(current_function)][node.get_var_name()].level)
+        // std::cout << node.get_var_name() << "::" << node.get_frag() << "::" << node.get_var_type() << current_function << "::" << node.get_expr_type() << "\n";
+        if(table[get_fname_index(current_function)].contains(node.get_var_name()) && node.get_frag() == "LEFT_ASSIGN" && node.get_var_type() != "")
         {
-            
-            try {
-                throw std::runtime_error("ERROR: Redefinition variable \'" + node.get_var_name() + "\'");
-            } catch(std::runtime_error& e)
+            auto existing_symbol_type = table[get_fname_index(current_function)][node.get_var_name()].fragment_type;
+            if(existing_symbol_type == p.fragment_type || p.fragment_type == "VARIABLE" || existing_symbol_type == "VARIABLE")
             {
-                std::cerr << e.what() << "\n";
-                exit(EXIT_FAILURE);
+                try {
+                    throw std::runtime_error("ERROR: Redefinition variable \'" + node.get_var_name() + "\'");
+                } catch(std::runtime_error& e)
+                {
+                    std::cerr << e.what() << "\n";
+                    exit(EXIT_FAILURE);
+                }
             }
+
         }
         // Because we gonna keep type variable when we assign new value to variable
         if(table[get_fname_index(current_function)].contains(node.get_var_name()) && node.get_frag() == "LEFT_ASSIGN" && node.get_var_type() == "")
@@ -180,8 +197,8 @@ void VisitorTable::visit(ASTVariable& node)
     {
 
         p.type = table[get_fname_index(current_function)][node.get_var_name()].type;
-
-        key = node.get_var_name() + "_" + std::to_string(table_level);
+        key = node.get_var_name();
+        //key = node.get_var_name() + "_" + std::to_string(table_level);
 
         //table[get_fname_index(current_function)][key] = p;
 
@@ -224,6 +241,12 @@ void VisitorTable::visit(ASTScope& node)
     {
         child->accept(*this);
     }
+}
+
+void VisitorTable::visit(ASTElse &node) {
+    incr_level();
+    node.get_scope()->accept(*this);
+    decr_level();
 }
 
 void VisitorTable::visit(ASTArgs& node)
@@ -318,7 +341,7 @@ void VisitorTable::visit(ASTIf& node)
     if(node.is_literal())
     {
         Properties p2;
-        p2.fragment_type = "IFVARIABLE";
+        p2.fragment_type = "LIFVARIABLE";
         p2.level = table_level;
         p2.type = node.get_second_type();
         table[get_fname_index(current_function)][node.get_second()] = p2;
@@ -326,6 +349,10 @@ void VisitorTable::visit(ASTIf& node)
     incr_level();
     node.get_scope()->accept(*this);
     decr_level();
+    if(node.get_else() != nullptr)
+    {
+        node.get_else()->accept(*this);
+    }
 }
 
 void VisitorTable::visit(ASTFor& node)
@@ -348,16 +375,18 @@ void VisitorTable::visit(ASTFor& node)
     incr_level();
     node.get_scope()->accept(*this);
     decr_level();
-    if(table[get_fname_index(current_function)][node.get_assing()->get_lvalue()->get_var_name()].level > table_level)
-    {   
-         try {
-                throw std::runtime_error("ERROR: Redefinition variable \'" + node.get_assing()->get_lvalue()->get_var_name() + "\'");
-            } catch(std::runtime_error& e)
-            {
-                std::cerr << e.what() << "\n";
-                exit(EXIT_FAILURE);
-            }
-    }
+
+    //????????????????
+    // if(table[get_fname_index(current_function)][node.get_assing()->get_lvalue()->get_var_name()].level > table_level)
+    // {   
+    //      try {
+    //             throw std::runtime_error("ERROR: Redefinition variable \'" + node.get_assing()->get_lvalue()->get_var_name() + "\'");
+    //         } catch(std::runtime_error& e)
+    //         {
+    //             std::cerr << e.what() << "\n";
+    //             exit(EXIT_FAILURE);
+    //         }
+    // }
     
 }
 
@@ -405,13 +434,15 @@ void VisitorTable::visit(ASTForCond& node)
             exit(EXIT_FAILURE);
         }
     }
-    table[get_fname_index(current_function)][node.get_second()+"_cond" + "_" + std::to_string(table_level)] = p2;
+    table[get_fname_index(current_function)][node.get_second()] = p2;
+    // table[get_fname_index(current_function)][node.get_second()+"_cond" + "_" + std::to_string(table_level)] = p2;
 
     Properties p1;
     p1.fragment_type = "FORCONDVARIABLE";
     p1.level = table_level;
     p1.type = table[get_fname_index(current_function)][node.get_first()].type;
-    table[get_fname_index(current_function)][node.get_first()+"_cond" + "_" + std::to_string(table_level)] = p1;
+    table[get_fname_index(current_function)][node.get_first()] = p1;
+    // table[get_fname_index(current_function)][node.get_first()+"_cond" + "_" + std::to_string(table_level)] = p1;
 }
 
 void VisitorTable::visit(ASTForOp& node)
@@ -436,6 +467,7 @@ void VisitorTable::visit(ASTForOp& node)
             }
         }
         p1.type = table[get_fname_index(current_function)][node.get_id()].type;
-        table[get_fname_index(current_function)][node.get_id()+"_op" + "_" + std::to_string(table_level)] = p1;
+        table[get_fname_index(current_function)][node.get_id()] = p1;
+        //table[get_fname_index(current_function)][node.get_id()+"_op" + "_" + std::to_string(table_level)] = p1;
     }
 }

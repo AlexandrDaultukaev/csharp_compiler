@@ -20,6 +20,7 @@ class ASTFor;
 class ASTForOp;
 class ASTForCond;
 class ASTKw;
+class ASTElse;
 
 class Visitor : public CsharpVisitor {
 public:
@@ -55,6 +56,7 @@ public:
   antlrcpp::Any
   visitKw_statement(CsharpParser::Kw_statementContext *context) override;
     antlrcpp::Any visitPars(CsharpParser::ParsContext *context) override;
+  antlrcpp::Any visitElse_statement(CsharpParser::Else_statementContext *context) override;
   // antlrcpp::Any visitArgs(CsharpParser::ArgsContext *context) override;
 
   virtual void visit(ASTProgram &node) = 0;
@@ -70,6 +72,7 @@ public:
   virtual void visit(ASTForCond &node) = 0;
   virtual void visit(ASTForOp &node) = 0;
   virtual void visit(ASTKw &node) = 0;
+  virtual void visit(ASTElse &node) = 0;
 };
 
 class ASTNode {
@@ -78,6 +81,7 @@ protected:
   static inline bool dpsn = false;
   std::size_t line = 0;
   std::size_t char_pos = 0;
+  bool x = false;
 public:
   virtual ~ASTNode() = default;
   static void increase_depth() { m_depth += 2; }
@@ -86,6 +90,8 @@ public:
       m_depth -= 2;
     }
   }
+  void set_x(bool b) { b = x; }
+  bool get_x() { return x; }
   void set_line(std::size_t l) { line = l; }
   std::size_t get_line() { return line; }
   void set_char_pos(std::size_t cp) { char_pos = cp; }
@@ -115,16 +121,28 @@ class ASTScope : public ASTNode {
 private:
   std::vector<ASTNode *> m_statements;
   std::string scope_name;
+  std::map<std::string, std::string> variables;
 
 public:
   ASTScope() = default;
-
+  void append_var(std::string variable, std::string type) { variables[variable] = type; }
+  std::map<std::string, std::string> get_var_map() { return variables; }
   void append_statement(ASTNode *node);
   ASTNode *get_statement(std::size_t i);
   // NOTE:
   std::string get_scope_name() { return scope_name; }
   void set_scope_name(std::string sn) { scope_name = sn; }
   std::vector<ASTNode *> get_statements();
+  void remove_statement(ASTNode* r) { 
+    for(auto it = m_statements.begin(); it!=m_statements.end(); it++)
+    {
+      if(*it == r)
+      {
+        m_statements.erase(it);
+        return;
+      }
+    }
+  }
 
   void accept(Visitor &visitor) override;
   ~ASTScope() {
@@ -141,6 +159,7 @@ private:
     std::string m_var_name = "";
     bool is_lit = false;
     std::string m_var_type = "";
+    std::string expr_type = "";
     std::string ctx_type = "";
     std::string func_name = "";
 
@@ -149,7 +168,9 @@ public:
     std::string get_frag() { return fragment_data; }
     void set_frag(std::string f) { fragment_data = f;}
     std::string get_ctx_type() { return ctx_type; }
-    void set_ctx_type(std::string s) { ctx_type = s; } 
+    void set_ctx_type(std::string s) { ctx_type = s; }
+    std::string get_expr_type() { return expr_type; }
+    void set_expr_type(std::string s) { expr_type = s; }
     std::string get_var_name() { return m_var_name; }
     void set_var_name(std::string s) { m_var_name = s; }
     std::string get_var_type() { return m_var_type; }
@@ -237,8 +258,17 @@ public:
   const ASTNode *get_child(std::size_t i) const;
 
   std::vector<ASTNode *> get_children();
-
   void accept(Visitor &visitor) override;
+  void remove_child(ASTNode* r) { 
+    for(auto it = m_children.begin(); it!=m_children.end(); it++)
+    {
+      if(*it == r)
+      {
+        m_children.erase(it);
+        return;
+      }
+    }
+  }
   ~ASTProgram() {
     for (std::size_t i = 0; i < m_children.size(); i++) {
       delete m_children[i];
@@ -398,6 +428,20 @@ public:
     Pars get_param_from_vector() { return pars; }
 };
 
+class ASTElse : public ASTNode {
+  ASTScope *m_scope = nullptr;
+
+  public:
+    ASTElse() = default;
+    void set_scope(ASTScope *sc) { m_scope = sc; }
+    ASTScope *get_scope() { return m_scope; }
+
+    void accept(Visitor &visitor) override;
+    ~ASTElse() {
+      delete m_scope;
+    }
+};
+
 class ASTIf : public ASTNode {
   std::string first = "";
   std::string first_type = "";
@@ -406,9 +450,11 @@ class ASTIf : public ASTNode {
   bool is_lit = false;
   std::string op = "";
   ASTScope *m_scope = nullptr;
+  ASTElse* else_statement = nullptr;
 
 public:
   ASTIf() = default;
+  void set_else(ASTElse* es) { else_statement = es; }
   void set_first(std::string s) { first = s; }
   void set_first_type(std::string s) { first_type = s; }
   void set_second(std::string s) { second = s; }
@@ -418,6 +464,7 @@ public:
   void set_literal(bool l) { is_lit = l; }
   bool is_literal() { return is_lit; }
 
+  ASTElse* get_else() { return else_statement; }
   std::string get_first() { return first; }
   std::string get_first_type() { return first_type; }
   std::string get_second() { return second; }
@@ -464,6 +511,7 @@ public:
   void visit(ASTForCond &node) override;
   void visit(ASTForOp &node) override;
   void visit(ASTKw &node) override;
+  void visit(ASTElse &node) override;
 };
 
 class VisitorTraverse : public Visitor {
@@ -491,4 +539,5 @@ public:
   void visit(ASTForCond &node) override;
   void visit(ASTForOp &node) override;
   void visit(ASTKw &node) override;
+  void visit(ASTElse &node) override;
 };

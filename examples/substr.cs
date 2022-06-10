@@ -6,6 +6,6 @@ if (b)
     int index = s1.IndexOf(s2);
     if (index >= 0)
     {
-        System.Console.WriteLine(index);
+
     }
 }

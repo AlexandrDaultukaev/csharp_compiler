@@ -39,6 +39,7 @@ class SemanticVisitor : public Visitor {
   void visit(ASTForCond &node) override;
   void visit(ASTForOp &node) override;
   void visit(ASTKw &node) override;
+  void visit(ASTElse &node) override;
   std::string get_literal_type(std::string literal);
 };
 
