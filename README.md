@@ -75,26 +75,89 @@ mkdir build && cd build && cmake .. && cmake --build .
 Третья колонка - уровень вложенности. 0 - глобальный scope. \
 Четвертая колонка - описание символа. Префикс "L" говорит о том, что символ литерал, "P" - символ относится к параметру функции.
 
-Пример 2(examples/nod.cs):
+Пример 2(examples/test3.cs):
 ```
-                             0                      0         FORVARIABLE
-                            12              NUMBER  0           LVARIABLE
-                            15              NUMBER  0           LVARIABLE
-      System.Console.WriteLine                   ~  3       FUNCTION_CALL
-                             a                 int  0            VARIABLE
-                           a_0           ASSIGN_ID  0            VARIABLE
-                           a_1           ASSIGN_ID  1            VARIABLE
-                             b                 int  0            VARIABLE
-                           b_2           ASSIGN_ID  2            VARIABLE
-                             i                      0       FOROPVARIABLE
-                           i_1           ASSIGN_ID  1            VARIABLE
-                           i_2           ASSIGN_ID  2            VARIABLE
-                           res                 int  1            VARIABLE
+Scope: Global
+                            sm                 int  0            VARIABLE
+Scope: func
+                             a                 int  1            VARIABLE
+                             c                char  1      PVARIABLE_func
+                             f               float  1      PVARIABLE_func
+                          func                 int  0        FUNCTION_DEF
+                             i                 int  1      PVARIABLE_func
+                             s              string  1      PVARIABLE_func
+                         smain                 int  1            VARIABLE
+Scope: main
+                            10              NUMBER  1           LVARIABLE
+                             2              NUMBER  2           LVARIABLE
+                             i                 int  1            VARIABLE
+                          main               float  0        FUNCTION_DEF
+                            sm                 int  1       FOROPVARIABLE
 ```
-Первая колонка представляет собой значение символа, но если он также упоминается глубже(в внутренних областях видимости), то указывается постфикс '_depth', где depth - это глубина вложенности.
+У каждой функции выводится свой Scope. Также существует глобальная область Global.
 
 ``-x, --to-xml``(optional) \
 ключ, указывающий парсеру в какой файл записывать AST в формате XML
+
+``--wall``(optional) \
+ключ, который активирует дополнительные проверки:
+  1. На неиспользуемые переменные.
+  2. На пустые функции.
+
+``--opt``(optional) \
+ключ, активирующий оптимизацию AST. Из AST удаляются: \
+  1. Все неиспользуемые переменные. \
+  2. Пустые функции, в том числе все вызовы таких функций. \
+Пример: \
+
+```
+int func(string s, int i, float f, char c) {
+    int var = 42;
+}
+
+int main()
+{
+    string s;
+    int i;
+    float f;
+    char c;
+    func(s, c, f, i);
+    return i;
+}
+```
+
+Если посмотреть на AST, то оно выглядит так:
+```
+<program>
+  <function name='func', params=(s, string; i, int; f, float; c, char), return-type='void'/>
+    <scope name='func'>
+      <assign lhs=(var, int), rhs=42, op=''/>
+    </scope>
+  <function name='main' return-type='int', return_statement=(value=i, literal=0, type=ID)/>
+    <scope name='main'>
+      <assign lhs=(s, string)/>
+      <assign lhs=(i, int)/>
+      <assign lhs=(f, float)/>
+      <assign lhs=(c, char)/>
+      <call name='func', args=(s, c, f, i)/>
+    </scope>
+</program>
+```
+
+Представленный код, хоть и создает разнообразные переменные, передаёт их в функцию, но толком ничего не делает. Результат этого кода заложен здесь:
+```
+return i;
+```
+И это является, пожалуй, самой важной частью, которую следовало бы сохранить после оптимизации.
+Если к компиляции применить опцию ``--opt``, то AST будет выглядеть так:
+```
+<program>
+  <function name='main' return-type='int', return_statement=(value=i, literal=0, type=ID)/>
+    <scope name='main'>
+      <assign lhs=(i, int), rhs=(1, 2), op='+'/>
+    </scope>
+</program>
+```
 
 ``-f, --file``(required) \
 ключ, указывающий лексеру какой файл разбить на токены \
