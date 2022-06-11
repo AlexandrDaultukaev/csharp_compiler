@@ -13,6 +13,19 @@ std::vector<ASTNode*> delete_ptrs;
 std::vector<std::string> deleted_funcs;
 ASTNode* program = nullptr;
 
+
+bool OptimizerVisitor::is_del_func(std::string func_name)
+{
+    for(auto& del_func : deleted_funcs)
+    {
+        if(del_func == func_name)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 void OptimizerVisitor::visit(ASTProgram& node)
 {
     program = &node;
@@ -20,7 +33,13 @@ void OptimizerVisitor::visit(ASTProgram& node)
     {
         child->accept(*this);
     }
-
+    if(opt)
+    {
+        PtrVisitor pvis(unused_vars);
+        program->accept(pvis);
+        DeleteVisitor dvis(unused_vars);
+        program->accept(dvis);
+    }
 }
 
 void OptimizerVisitor::visit(ASTFunction& node)
@@ -33,14 +52,24 @@ void OptimizerVisitor::visit(ASTFunction& node)
     {
         if(item.second.fragment_type[0] != 'L' && item.second.fragment_type != "FUNCTION_CALL" && item.second.fragment_type != "FUNCTION_DEF")
         {
-            append_unused_var(item.first);
+            if(item.first.find("_argument_") == std::string::npos && item.first.find("_return_") == std::string::npos)
+            {
+                append_unused_var(item.first);
+            }
         }
     }
     for(auto const& params : node.get_params())
     {
         set_used_var(params->get_var_name());
     }
-    node.get_scope()->accept(*this);
+
+    if(node.get_scope()->get_statements().size() < 1)
+    {
+        append_warning(std::make_pair("Empty function", node.func_name()));
+        deleted_funcs.push_back(node.func_name());
+    } else {
+        node.get_scope()->accept(*this);
+    }
     if(node.get_return() != nullptr)
     {
         node.get_return()->accept(*this);
@@ -49,27 +78,37 @@ void OptimizerVisitor::visit(ASTFunction& node)
     {
         if(item.second)
         {
-            append_warning(std::make_pair("Unused variable", item.first));
+            if(item.first.find("_argument_") == std::string::npos && item.first.find("_return_") == std::string::npos)
+            {
+                append_warning(std::make_pair("Unused variable", item.first));
+            }
         }
     }
     //print_unused_var();
     if(wall)
     {
         dump_warnings(current_function);
+        warnings.clear();
     }
-
     if(opt)
     {
-        PtrVisitor pvis(current_function, unused_vars);
-        program->accept(pvis);
-        DeleteVisitor dvis(current_function, unused_vars);
-        program->accept(dvis);
+        PtrVisitor pvis(unused_vars);
+        node.accept(pvis);
+        DeleteVisitor dvis(unused_vars);
+        node.accept(dvis);
+        node.accept(pvis);
+        node.accept(dvis);
+        // node.accept(*this);
+        // PtrVisitor pvis1(unused_vars);
+        // DeleteVisitor dvis1(unused_vars);
+        // program->accept(pvis);
+        // program->accept(dvis);
     }
+
 }
 
 void OptimizerVisitor::visit(ASTScope &node)
 {
-
     for(auto& statement : node.get_statements())
     {
         statement->accept(*this);
@@ -79,12 +118,28 @@ void OptimizerVisitor::visit(ASTScope &node)
 
 void OptimizerVisitor::visit(ASTFuncCall &node)
 {
+    
+    // if(is_del_func(node.func_name()))
+    // {
+    //     append_warning(std::make_pair("Call empty function", node.func_name()));
+    // }
+        
 
     for(auto& arg : node.get_args_from_vector())
     {
         if(table[get_fname_index(current_function)][arg.first].fragment_type[0] != 'L')
         {
-            set_used_var(arg.first);
+            std::size_t found = arg.first.find("_argument_");
+            std::string first = arg.first;
+            if(found != std::string::npos)
+            {
+                first = first.substr(0, found);
+                
+            }
+            if(!is_del_func(node.func_name()))
+            {
+                set_used_var(first);
+            }
         }
     }
 
@@ -105,7 +160,6 @@ void OptimizerVisitor::visit(ASTIf &node)
 void OptimizerVisitor::visit(ASTFor &node)
 {
     set_used_var(node.get_assing()->get_lvalue()->get_var_name());
-    // node.get_assing()->accept(*this);
     node.get_cond()->accept(*this);
 }
 
@@ -165,7 +219,7 @@ void PtrVisitor::visit(ASTProgram& node)
 
 void PtrVisitor::visit(ASTFunction& node)
 {
-    current_func = node.func_name();
+    current_function = node.func_name();
     node.get_scope()->accept(*this);
     if(node.get_scope()->get_statements().size() < 1)
     {
@@ -245,36 +299,41 @@ void DeleteVisitor::visit(ASTProgram& node)
             {
                 node.remove_child(statement);
                 break;
+            } else {
+                statement->accept(*this);
             }
         }
-        
-        //statement->accept(*this);
     }
+
 }
 
 void DeleteVisitor::visit(ASTFunction& node)
 {
-    current_func = node.func_name();
+    current_function = node.func_name();
     node.get_scope()->accept(*this);
 }
 
 void DeleteVisitor::visit(ASTScope &node)
 {
+    if(node.get_statements().size() > 0)
+    {
+        for(auto* statement : node.get_statements())
+        {
+            statement->accept(*this);
+        }
+    }
     for(auto* statement : node.get_statements())
     {
         for(auto* delete_stat : delete_ptrs)
         {
             if(statement == delete_stat)
             {
-                std::cout << "hw\n";
                 node.remove_statement(statement);
-                std::cout << "hwend\n";
                 break;
             }
         }
-        
-        //statement->accept(*this);
     }
+
 }
 
 void DeleteVisitor::visit(ASTFuncCall &node)
@@ -282,7 +341,11 @@ void DeleteVisitor::visit(ASTFuncCall &node)
 
 void DeleteVisitor::visit(ASTIf &node)
 {
-    node.get_scope()->accept(*this);
+    if(node.get_scope()->get_statements().size() > 0)
+    {
+        node.get_scope()->accept(*this);
+    }
+    
     if(node.get_else() != nullptr)
     {
         node.get_else()->accept(*this);

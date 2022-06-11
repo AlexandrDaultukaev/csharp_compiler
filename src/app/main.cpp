@@ -4,7 +4,7 @@
 #include "parser/parser.hpp"
 #include "optimizer/optimizer.hpp"
 #include "semantic/semantic.hpp"
-//#include "parser/symbol_table/symbol_table.hpp"
+#include "codegen/codegen.hpp"
 #include "CLI/CLI.hpp"
 #include "antlr4-runtime.h"
 #include <string>
@@ -22,6 +22,7 @@ int main (int argc, const char * argv []) {
 
     CLI::App app;
     std::string filepath;
+    std::string fileout;
     std::string xml_file = "";
     bool dump_tokens_key = false;
     bool version_key = false;
@@ -38,8 +39,10 @@ int main (int argc, const char * argv []) {
     app.add_flag("--opt", optim1, "Unable optimization");
     app.add_flag("--wall", wall, "Warnings info");
     auto fileflag = app.add_option("-f, --file", filepath, "Filepath");
+    auto fileflagout = app.add_option("-o, --out", fileout, "Out file");
     app.add_option("-x, --to-xml", xml_file, "Filepath XML");
     fileflag->needs(fileflag);
+    fileflagout->needs(fileflagout);
     CLI11_PARSE(app, argc, argv);
     if(version_key)
     {
@@ -78,6 +81,9 @@ int main (int argc, const char * argv []) {
     if (dump_ast || xml_file != "") {
         cs_lang::dump_ast(parse_result.m_program, xml_file, dump_ast);
     }
-    
+    std::ofstream stream(fileout);
+    CodeGen code_generator(stream, filepath, fileout);
+    parse_result.m_program->accept(code_generator);
+    stream.close();
     return 0;
 }

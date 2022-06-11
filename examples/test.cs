@@ -1,4 +1,4 @@
-int func(string sf, float ff, int ii, int iiiii, float fff, int iii, char cc) { main(); }
+int func(string sf, float ff, int ii, int iiiii, float fff, int iii, char cc) {  }
 
 string main() { 
     float f;
@@ -10,5 +10,5 @@ string main() {
     {
         func("Hello, World!", 3.0, 2, 1, 0.0, 0, 'R');
     }
-    return "Enough.";
+    return "exit.";
 }

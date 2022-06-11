@@ -55,12 +55,12 @@ KEYWORD:
 	| 'unsafe'
 	| 'using'
 	| 'virtual'
-	| 'void'
 	| 'volatile'
 	| 'while';
 
 CLASS: 'class';
 RETURN: 'return';
+VOID: 'void';
 
 VAR:
 	INT
@@ -155,7 +155,7 @@ assign_statement: (ID | var_def) (
 	)?;
 literal: TEXT | NUMBER | CHARv | FLOAT_NUMBER;
 var_def: VAR ID;
-func_def: (KEYWORD* VAR | VAR) ID RLP pars RRP (
+func_def: (KEYWORD* VAR | VAR | VOID) ID RLP pars RRP (
 		(SEMICOLON)
 		| (CLB scope (return_statement)? CRB)
 	);

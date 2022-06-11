@@ -555,7 +555,13 @@ void VisitorInitialiser::visit(ASTFunction &node) {
     node.set_return(return_child);
   }
   node.func_name() = ctx->ID()->getText();
-  node.return_type() = ctx->VAR()->getText();
+  if(ctx->VAR() != nullptr)
+  {
+    node.return_type() = ctx->VAR()->getText();
+  } else {
+    node.return_type() = ctx->VOID()->getText();
+  }
+  
   if(ctx->pars() != nullptr)
   {
     auto pars_ctx = ctx->pars();

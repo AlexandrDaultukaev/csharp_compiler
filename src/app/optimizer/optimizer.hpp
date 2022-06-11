@@ -21,8 +21,6 @@ class OptimizerVisitor : public Visitor {
   bool wall;
   bool opt;
   public:
-	// Если переменная одна в разных областях, то можно такие переменные не анализировать.
-	// Можно анализировать только те, которые уникальны.
   OptimizerVisitor(Table t, Indexer fi, bool w = false, bool o = false) : table(t), fname_indexer(fi), wall(w), opt(o) {}
   std::size_t get_fname_index(std::string s) { return fname_indexer[s]; }
 	void append_warning(std::pair<std::string, std::string> w) { warnings.push_back(w); }
@@ -49,6 +47,7 @@ class OptimizerVisitor : public Visitor {
   }
   void clear_unused_vars() { unused_vars.clear(); }
 	std::map<std::string, bool> get_unused_vars() { return unused_vars; }
+  bool is_del_func(std::string func_name);
   void visit(ASTProgram &node) override;
   void visit(ASTFunction &node) override;
   void visit(ASTVariable &node) {}
@@ -66,10 +65,9 @@ class OptimizerVisitor : public Visitor {
 };
 
 class PtrVisitor : public Visitor {
-  std::string current_func;
   std::map<std::string, bool> unused_vars;
   public:
-  PtrVisitor(std::string cf, std::map<std::string, bool> uv) : current_func(cf), unused_vars(uv) {}
+  PtrVisitor(std::map<std::string, bool> uv) : unused_vars(uv) {}
   void visit(ASTProgram &node) override;
   void visit(ASTFunction &node) override;
   void visit(ASTVariable &node) {}
@@ -87,10 +85,9 @@ class PtrVisitor : public Visitor {
 };
 
 class DeleteVisitor : public Visitor {
-  std::string current_func;
   std::map<std::string, bool> unused_vars;
   public:
-  DeleteVisitor(std::string cf, std::map<std::string, bool> uv) : current_func(cf), unused_vars(uv) {}
+  DeleteVisitor(std::map<std::string, bool> uv) :unused_vars(uv) {}
   void visit(ASTProgram &node) override;
   void visit(ASTFunction &node) override;
   void visit(ASTVariable &node) {}

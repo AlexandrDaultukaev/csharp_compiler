@@ -1,13 +1,14 @@
 
-int func(string s, int i, float f, char c) {
-    s = 1;
+void func(string s, int i, float f, char c) {
+    int var = 1;
 }
 
-float main(int i)
+int main()
 {
-    string smain;
-    int imain;
-    float fmain;
-    char cmain;
-    func(smain, cmain, fmain, imain);
+    string s;
+    int i = 1 + 2;
+    float f;
+    char c;
+    func(s, c, f, i);
+    return i;
 }

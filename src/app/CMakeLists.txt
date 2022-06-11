@@ -32,12 +32,18 @@ optimizer/optimizer.hpp
 optimizer/optimizer.cpp
 )
 
+add_library(codegen STATIC
+codegen/codegen.hpp
+codegen/codegen.cpp
+)
+
 include(CompileOptions)
 set_compile_options(${target_name})
 # set_compile_options(lexerlib)
 set_compile_options(parserlib)
 set_compile_options(semanticlib)
 set_compile_options(optimizerlib)
+set_compile_options(codegen)
 
 target_include_directories(
   ${target_name}
@@ -79,6 +85,14 @@ target_include_directories(
       ${SRC_PATH}
 )
 
+target_include_directories(
+    codegen
+    PRIVATE
+      ${CMAKE_CURRENT_LIST_DIR}
+    PUBLIC
+      ${SRC_PATH}
+)
+
 # target_link_libraries(lexerlib antlr4_cpp_runtime)
 # target_link_libraries(lexerlib CLI11)
 target_link_libraries(gram antlr4_cpp_runtime)
@@ -97,11 +111,17 @@ target_link_libraries(optimizerlib CLI11)
 target_link_libraries(optimizerlib gram)
 target_link_libraries(optimizerlib parserlib)
 
+target_link_libraries(codegen antlr4_cpp_runtime)
+target_link_libraries(codegen CLI11)
+target_link_libraries(codegen gram)
+target_link_libraries(codegen parserlib)
+
 target_link_libraries(${target_name} antlr4_cpp_runtime)
 target_link_libraries(${target_name} CLI11)
 # target_link_libraries(${target_name} lexerlib)
 target_link_libraries(${target_name} parserlib)
 target_link_libraries(${target_name} semanticlib)
 target_link_libraries(${target_name} optimizerlib)
+target_link_libraries(${target_name} codegen)
 
 
