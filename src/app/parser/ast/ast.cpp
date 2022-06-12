@@ -24,6 +24,9 @@ Visitor::visitExpressions(CsharpParser::ExpressionsContext *context) {
   if (context->for_statement()) {
     return antlrcpp::Any(context->for_statement());
   }
+  if (context->print_statement()) {
+    return antlrcpp::Any(context->print_statement());
+  }
 
   return antlrcpp::Any(context);
 }
@@ -43,6 +46,9 @@ antlrcpp::Any Visitor::visitStatement(CsharpParser::StatementContext *context) {
   }
   if (context->for_statement()) {
     return antlrcpp::Any(context->for_statement());
+  }
+  if (context->print_statement()) {
+    return antlrcpp::Any(context->print_statement());
   }
 
   return antlrcpp::Any(context);
@@ -144,6 +150,12 @@ antlrcpp::Any
 Visitor::visitFor_statement(CsharpParser::For_statementContext *context) {
   return antlrcpp::Any(context);
 }
+
+antlrcpp::Any
+Visitor::visitPrint_statement(CsharpParser::Print_statementContext *context) {
+  return antlrcpp::Any(context);
+}
+
 antlrcpp::Any
 Visitor::visitFor_condition(CsharpParser::For_conditionContext *context) {
   return antlrcpp::Any(context);
@@ -206,7 +218,7 @@ void ASTArgs::accept(Visitor &visitor) { visitor.visit(*this); }
 void ASTReturn::accept(Visitor &visitor) { visitor.visit(*this); }
 void ASTIf::accept(Visitor &visitor) { visitor.visit(*this); }
 void ASTElse::accept(Visitor &visitor) { visitor.visit(*this); }
-
+void ASTPrint::accept(Visitor &visitor) { visitor.visit(*this); }
 VisitorInitialiser::VisitorInitialiser(antlrcpp::Any context)
     : m_context(context) {}
 
@@ -223,7 +235,6 @@ void VisitorInitialiser::visit(ASTProgram &node) {
     auto expr = visitExpressions(exprs[i]);
 
     if (expr.isNotNull()) {
-      // Check if statement is function call: "Console.Writeln("Hello!\n")"
       if (expr.is<CsharpParser::Func_defContext *>()) {
         VisitorInitialiser visitor(expr.as<CsharpParser::Func_defContext *>());
 
@@ -270,6 +281,15 @@ void VisitorInitialiser::visit(ASTProgram &node) {
         VisitorInitialiser visitor(
             expr.as<CsharpParser::For_statementContext *>());
         child = new ASTFor;
+        child->accept(visitor);
+        node.append_child(child);
+      }
+
+      if (expr.is<CsharpParser::Print_statementContext *>()) {
+        VisitorInitialiser visitor(
+            expr.as<CsharpParser::Print_statementContext *>());
+        std::cout << "fprint\n";
+        child = new ASTPrint;
         child->accept(visitor);
         node.append_child(child);
       }
@@ -426,6 +446,13 @@ void VisitorInitialiser::visit(ASTScope &node) {
         VisitorInitialiser visitor(
             expr.as<CsharpParser::For_statementContext *>());
         child = new ASTFor;
+        child->accept(visitor);
+        node.append_statement(child);
+      }
+      if (expr.is<CsharpParser::Print_statementContext *>()) {
+        VisitorInitialiser visitor(
+            expr.as<CsharpParser::Print_statementContext *>());
+        child = new ASTPrint;
         child->accept(visitor);
         node.append_statement(child);
       }
@@ -687,6 +714,13 @@ void VisitorInitialiser::visit(ASTElse &node) {
   node.set_line(ctx->CRB()->getSymbol()->getLine());
 }
 
+void VisitorInitialiser::visit(ASTPrint &node) {
+  auto ctx = m_context.as<CsharpParser::Print_statementContext *>();
+  node.set_line(ctx->ID()->getSymbol()->getLine());
+  node.set_name(ctx->ID()->getText());
+}
+
+
 void VisitorInitialiser::visit(ASTIf &node) {
   auto ctx = m_context.as<CsharpParser::If_statementContext *>();
   node.set_first(ctx->ID(0)->getText());
@@ -936,4 +970,9 @@ void VisitorTraverse::visit(ASTFor &node) {
 void VisitorTraverse::visit(ASTKw &node) {
   set_indent(node.get_depth());
   stream << "<keyword value=\'" << node.get_kw() << "\'/>\n";
+}
+
+void VisitorTraverse::visit(ASTPrint &node) {
+  set_indent(node.get_depth());
+  stream << "<print arg=(" << node.get_name() << ") />\n";
 }

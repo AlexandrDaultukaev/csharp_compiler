@@ -61,6 +61,7 @@ class OptimizerVisitor : public Visitor {
   void visit(ASTForCond &node) override;
   void visit(ASTForOp &node) {}
   void visit(ASTKw &node) {}
+  void visit(ASTPrint &node) override;
   void visit(ASTElse &node) override;
 };
 
@@ -81,6 +82,7 @@ class PtrVisitor : public Visitor {
   void visit(ASTForCond &node) override;
   void visit(ASTForOp &node) {}
   void visit(ASTKw &node) {}
+  void visit(ASTPrint &node) {}
   void visit(ASTElse &node) override;
 };
 
@@ -101,5 +103,6 @@ class DeleteVisitor : public Visitor {
   void visit(ASTForCond &node) override;
   void visit(ASTForOp &node) {}
   void visit(ASTKw &node) {}
+  void visit(ASTPrint &node) {}
   void visit(ASTElse &node) override;
 };

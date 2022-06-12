@@ -544,3 +544,17 @@ void VisitorTable::visit(ASTForOp& node)
         //table[get_fname_index(current_function)][node.get_id()+"_op" + "_" + std::to_string(table_level)] = p1;
     }
 }
+
+void VisitorTable::visit(ASTPrint& node)
+{
+    if(!table[get_fname_index(current_function)].contains(node.get_name()) && !table[0].contains(node.get_name())&& !inner_table[std::to_string(inner_counter)].contains(node.get_name()))
+    {
+        try {
+            throw std::runtime_error("ERROR: Undefined variable \'" + node.get_name() + "\' in line: " + std::to_string(node.get_line()) + "\n");
+        } catch(std::runtime_error& e)
+        {
+            std::cerr << e.what() << "\n";
+            exit(EXIT_FAILURE);
+        }
+    }
+}

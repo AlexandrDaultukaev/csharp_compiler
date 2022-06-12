@@ -42,5 +42,5 @@ float main(int i)
     } else {
         int ifh = 2;
     }
-    
+    WriteLine(s);
 }

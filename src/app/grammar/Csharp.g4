@@ -93,6 +93,7 @@ STRING: 'string' | 'System.String';
 CHAR: 'char';
 BOOL: 'bool';
 
+WRITELN: 'WriteLine';
 IF: 'if';
 ELSE: 'else';
 FOR: 'for';
@@ -146,7 +147,7 @@ WS: [ \r\t\n]+ -> skip;
 // func() ; a+b ; a++ ; a=b ; if/while/for ; return ;
 
 program: expressions* EOF;
-expressions: ( func_def | (assign_statement SEMICOLON) | if_statement | for_statement);
+expressions: ( func_def | (assign_statement SEMICOLON) | if_statement | for_statement | print_statement);
 assign_statement: (ID | var_def) (
 		ASSIGN (
 			((ID | literal) ((BINARY_OP (ID | literal)))?)
@@ -163,7 +164,7 @@ scope: (statement)*;
 return_statement: RETURN (literal | ID) SEMICOLON;
 statement: (func_call SEMICOLON)
 	| (assign_statement SEMICOLON)
-	| if_statement | for_statement | (kw_statement SEMICOLON);
+	| if_statement | for_statement | (kw_statement SEMICOLON) | print_statement;
 func_call: ID RLP args RRP;
 args: (arg (COMMA arg)*)?;
 arg: (ID | literal);
@@ -175,3 +176,4 @@ for_statement: FOR RLP assign_statement SEMICOLON for_condition SEMICOLON for_op
 for_condition: ID LOGIC_OP (ID | literal);
 for_operation: (ID UNARYMATHEXP) | assign_statement;
 kw_statement: KEYWORD;
+print_statement: WRITELN RLP ID RRP SEMICOLON;

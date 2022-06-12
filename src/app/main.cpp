@@ -71,7 +71,11 @@ int main (int argc, const char * argv []) {
     parse_result.m_program->accept(semantic_visitor);
     // if(dump_sem)
     // {
-    cs_lang::print_semantic_report(semantic_visitor);
+    if(semantic_visitor.get_errors().size() > 0)
+    {
+        cs_lang::print_semantic_report(semantic_visitor);
+    }
+    
     if(semantic_visitor.get_errors().size() > 0)
     {
         throw;

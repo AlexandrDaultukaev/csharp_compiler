@@ -368,3 +368,4 @@ void SemanticVisitor::visit(ASTForOp& node) {
 }
 void SemanticVisitor::visit(ASTKw& node) {}
 
+void SemanticVisitor::visit(ASTPrint &node) {}
