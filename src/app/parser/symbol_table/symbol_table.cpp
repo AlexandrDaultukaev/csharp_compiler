@@ -21,7 +21,9 @@
 
 std::size_t VisitorTable::table_level = 0;
 std::size_t VisitorTable::vector_num = 0;
+std::size_t inner_counter = 0;
 static std::string current_function = "Global";
+static std::string current_scope = "";
 std::size_t expr_counter = 0;
 
 void VisitorTable::visit(ASTProgram& node)
@@ -146,7 +148,19 @@ void VisitorTable::visit(ASTVariable& node)
                     exit(EXIT_FAILURE);
                 }
             }
-
+        }
+        if(current_scope != "")
+        {
+            if(!node.is_literal() && node.get_var_type() != "" && inner_table[std::to_string(inner_counter)].contains(node.get_var_name()))
+            {
+                try {
+                    throw std::runtime_error("ERROR: Redefinition variable \'" + node.get_var_name() + "\'");
+                } catch(std::runtime_error& e)
+                {
+                    std::cerr << e.what() << "\n";
+                    exit(EXIT_FAILURE);
+                }
+            }
         }
         // Because we gonna keep type variable when we assign new value to variable
         if(table[get_fname_index(current_function)].contains(node.get_var_name()) && node.get_frag() == "LEFT_ASSIGN" && node.get_var_type() == "")
@@ -155,7 +169,7 @@ void VisitorTable::visit(ASTVariable& node)
         }
 
         //UNDEFINED VARIABLE ERROR
-        if(!table[get_fname_index(current_function)].contains(node.get_var_name()) && node.get_var_type() == "" )
+        if(!table[get_fname_index(current_function)].contains(node.get_var_name()) && node.get_var_type() == "" && !inner_table[std::to_string(inner_counter)].contains(node.get_var_name()))
         {
             //CHECK IF VARIABLE EXSITS IN GLOBAL SCOPE
             if(table[0].contains(node.get_var_name()))
@@ -205,7 +219,35 @@ void VisitorTable::visit(ASTVariable& node)
     } //else if(p.fragment_type == "PVARIABLE") {
     //     key = key + "_" + node.get_func_name();
     // }
-    table[get_fname_index(current_function)][key] = p;
+    if(current_scope == "")
+    {
+        table[get_fname_index(current_function)][key] = p;
+    } else {
+        std::string type_in_var = node.get_var_type();
+        if(type_in_var == "")
+        {
+            if(inner_table[std::to_string(inner_counter)].contains(node.get_var_name()))
+            {
+                type_in_var = inner_table[std::to_string(inner_counter)][node.get_var_name()];
+            } else if(table[get_fname_index(current_function)].contains(node.get_var_name()))
+            {
+                type_in_var = table[get_fname_index(current_function)][node.get_var_name()].type;
+            } else if(table[0].contains(node.get_var_name())) {
+                type_in_var = table[0][node.get_var_name()].type;
+            } else {
+                try {
+                    throw std::runtime_error("ERROR: Undefined variable \'" + node.get_var_name() + "\'");
+                } catch(std::runtime_error& e)
+                {
+                    std::cerr << e.what() << "\n";
+                    exit(EXIT_FAILURE);
+                }
+            }
+        }
+        
+        inner_table[std::to_string(inner_counter)][node.get_var_name()] = type_in_var;
+    }
+    
 
 }
 
@@ -237,15 +279,38 @@ void VisitorTable::visit(ASTFuncCall& node)
 
 void VisitorTable::visit(ASTScope& node)
 {
+    if(current_scope != "" && inner_counter > 0)
+    {
+        inner_table[std::to_string(inner_counter+1)] = inner_table[std::to_string(inner_counter)];
+    }
+    inner_counter++;
+    current_scope = "scope";
+    std::size_t fix_in_id = inner_counter;
+    std::size_t amount_in_scopes = 0;
     for(auto& child : node.get_statements())
     {
         child->accept(*this);
+        if(inner_counter != fix_in_id)
+        {
+            inner_counter = fix_in_id;
+            amount_in_scopes++;
+        }
+        if(current_scope == "")
+        {
+            current_scope = "scope";
+        }
     }
+    current_scope = "";
+    inner_counter += amount_in_scopes;
 }
 
 void VisitorTable::visit(ASTElse &node) {
     incr_level();
+    std::size_t cs = inner_counter+1;
+    std::cout << "ELSE:\n";
     node.get_scope()->accept(*this);
+    print_inner_table(std::to_string(cs));
+    
     decr_level();
 }
 
@@ -347,7 +412,11 @@ void VisitorTable::visit(ASTIf& node)
         table[get_fname_index(current_function)][node.get_second()] = p2;
     }
     incr_level();
+    std::size_t cs = inner_counter+1;
+    std::cout << "IF:\n";
     node.get_scope()->accept(*this);
+    print_inner_table(std::to_string(cs));
+    
     decr_level();
     if(node.get_else() != nullptr)
     {
@@ -373,7 +442,11 @@ void VisitorTable::visit(ASTFor& node)
     }
 
     incr_level();
+    std::size_t cs = inner_counter+1;
+    std::cout << "FOR:\n";
     node.get_scope()->accept(*this);
+    print_inner_table(std::to_string(cs));
+    
     decr_level();
 
     //????????????????

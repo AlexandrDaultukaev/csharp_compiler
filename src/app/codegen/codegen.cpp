@@ -14,6 +14,13 @@ std::size_t index = 0;
 // ID = <%INDEX, TYPE>
 std::map<std::string, std::pair<std::string, std::string>> name_index;
 
+std::string new_index()
+{
+    std::string tmp = "%"+std::to_string(index);
+    index++;
+    return tmp;
+}
+
 std::string get_llvm_type(std::string p)
 {
     auto ptype = "";
@@ -30,21 +37,25 @@ std::string get_llvm_type(std::string p)
     return ptype;
 }
 
-// std::string get_llvm_op(std::string op)
-// {
-//     auto ret_op = "";
-//     if(op == "+")
-//     {
-//         ptype = "i32";
-//     } else if(p == "char")
-//     {
-//         ptype = "i8";
-//     } else if(p == "float")
-//     {
-//         ptype = "float";
-//     }
-//     return ptype;
-// }
+std::string get_llvm_op(std::string op)
+{
+    auto ret_op = "";
+    if(op == "+")
+    {
+        ret_op = "add";
+    } else if(op == "-")
+    {
+        ret_op = "sub";
+    } else if(op == "/")
+    {
+        ret_op = "sdiv";
+    } else if(op == "%")
+    {
+        ret_op = "srem";
+    }
+
+    return ret_op;
+}
 
 void CodeGen::visit(ASTProgram &node)
 {
@@ -125,8 +136,8 @@ void CodeGen::visit(ASTAssign &node)
         stream << "%" << index << " = alloca " << type << "\n";
         name_index[node.get_lvalue()->get_var_name()] = std::make_pair("%"+std::to_string(index), type);
         index++;
-    }
-    if(node.get_rvalue1() != nullptr && node.get_rvalue1() != nullptr)
+    } // else pass
+    if(node.get_rvalue1() != nullptr && node.get_rvalue2() != nullptr)
     {
         std::string type = get_llvm_type(node.get_rvalue1()->get_var_type());
         std::string op   = node.get_oper();
@@ -176,5 +187,72 @@ void CodeGen::visit(ASTAssign &node)
             }
             stream << type << "* " << name_index[node.get_lvalue()->get_var_name()].first << "\n";
         }
+        if(node.get_rvalue1()->is_literal() && !node.get_rvalue2()->is_literal())
+        {
+            std::cout<<"r1!r2\n";
+            std::string tmp_ind_b   = new_index();
+            std::string tmp_literal = new_index();
+            std::string op          = get_llvm_op(node.get_oper());
+            std::string r1_literal  = node.get_rvalue1()->get_var_name();
+            std::string r2_type     = name_index[node.get_rvalue2()->get_var_name()].second;
+            std::string r2_ind      = name_index[node.get_rvalue2()->get_var_name()].first;
+            std::string l_ind       = name_index[node.get_lvalue()->get_var_name()].first;
+            stream << tmp_ind_b << " = load " << r2_type << ", " << r2_type << "* " << r2_ind << "\n";
+            stream << tmp_literal << " = " << op << " " << r2_type << " " << r1_literal << ", " << tmp_ind_b << "\n";
+            stream << "store " << r2_type << " " << tmp_literal << ", " << r2_type << "* " << l_ind << "\n";
+        }
+        if(!node.get_rvalue1()->is_literal() && node.get_rvalue2()->is_literal())
+        {
+            std::cout<<"!r1r2\n";
+            std::string tmp_ind_b   = new_index();
+            std::string tmp_literal = new_index();
+            std::string op          = get_llvm_op(node.get_oper());
+            std::string r2_literal  = node.get_rvalue2()->get_var_name();
+            std::string r1_type     = name_index[node.get_rvalue1()->get_var_name()].second;
+            std::string r1_ind      = name_index[node.get_rvalue1()->get_var_name()].first;
+            std::string l_ind       = name_index[node.get_lvalue()->get_var_name()].first;
+            stream << tmp_ind_b << " = load " << r1_type << ", " << r1_type << "* " << r1_ind << "\n";
+            stream << tmp_literal << " = " << op << " " << r1_type << " " << tmp_ind_b << ", " << r2_literal << "\n";
+            stream << "store " << r1_type << " " << tmp_literal << ", " << r1_type << "* " << l_ind << "\n";
+        }
+        if(!node.get_rvalue1()->is_literal() && !node.get_rvalue2()->is_literal())
+        {
+            std::string tmp_ind_r1 = new_index();
+            std::string tmp_ind_r2 = new_index();
+            std::string res_r1_r2  = new_index();
+            std::string op         = get_llvm_op(node.get_oper());
+            std::string r1_type    = name_index[node.get_rvalue1()->get_var_name()].second;
+            std::string r2_type    = name_index[node.get_rvalue2()->get_var_name()].second;
+            std::string r1_ind     = name_index[node.get_rvalue1()->get_var_name()].first;
+            std::string r2_ind     = name_index[node.get_rvalue2()->get_var_name()].first;
+            std::string l_ind      = name_index[node.get_lvalue()->get_var_name()].first;
+            stream << tmp_ind_r1 << " = load " << r1_type << ", " << r1_type << "* " << r1_ind << "\n";
+            stream << tmp_ind_r2 << " = load " << r2_type << ", " << r2_type << "* " << r2_ind << "\n";
+            stream << res_r1_r2  << " = " << op << " " << r1_type << " " << tmp_ind_r1 << ", " << tmp_ind_r2 << "\n";
+            stream << "store " << r1_type << " " << res_r1_r2 << ", " << r1_type << "* " << l_ind << "\n";
+        }
+    } else if(node.get_rvalue1() != nullptr)
+    {
+        if(node.get_rvalue1()->is_literal())
+        {
+            std::string literal = node.get_rvalue1()->get_var_name();
+            std::string l_ind   = name_index[node.get_lvalue()->get_var_name()].first;
+            std::string l_type  = name_index[node.get_lvalue()->get_var_name()].second;
+            stream << "store " << l_type << " " << literal << ", " << l_type << "* " << l_ind << "\n"; 
+        }
+        if(!node.get_rvalue1()->is_literal())
+        {
+            std::string r1_ind  = name_index[node.get_rvalue1()->get_var_name()].first;
+            std::string l_ind   = name_index[node.get_lvalue()->get_var_name()].first;
+            std::string l_type  = name_index[node.get_lvalue()->get_var_name()].second;
+            std::string tmp_ind = new_index();
+            stream << tmp_ind << " = load " << l_type << ", " << l_type << "* " << r1_ind << "\n";
+            stream << "store " << l_type << " " << tmp_ind << ", " << l_type << "* " << l_ind << "\n"; 
+        }
     }
+}
+
+void CodeGen::visit(ASTIf &node)
+{
+    
 }

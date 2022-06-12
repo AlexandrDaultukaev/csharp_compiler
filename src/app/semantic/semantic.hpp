@@ -15,14 +15,16 @@ class SemanticVisitor : public Visitor {
   using FunctionProp = std::map<std::string, std::vector<std::pair<std::string, std::string>>>;
   using Indexer = std::map<std::string, std::size_t>;
   using Errors = std::vector<std::pair<std::string, std::string>>;
+  using InnerTable = std::map<std::string, std::map<std::string, std::string>>;
   private:
     Errors errors;
     Table table;
     FunctionProp f_props;
     Indexer fname_indexer;
+    InnerTable inner_table;
   public:
   std::size_t get_fname_index(std::string s) { return fname_indexer[s]; }
-  SemanticVisitor(Table t, FunctionProp p, Indexer fi) : table(t), f_props(p), fname_indexer(fi) {}
+  SemanticVisitor(Table t, FunctionProp p, Indexer fi, InnerTable it) : table(t), f_props(p), fname_indexer(fi), inner_table(it) {}
   void append_error(std::pair<std::string, std::string> s) { errors.emplace_back(s); }
   Errors get_errors() { return errors; }
   int get_level(std::string str);

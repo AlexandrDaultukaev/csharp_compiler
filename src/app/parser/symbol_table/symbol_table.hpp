@@ -19,10 +19,12 @@ struct Properties {
 
 class VisitorTable : public Visitor {
     using Table = std::vector<std::map<std::string, Properties>>;
+    using InnerTable = std::map<std::string, std::map<std::string, std::string>>;
     using FunctionProp = std::map<std::string, std::vector<std::pair<std::string, std::string>>>;
     using Indexer = std::map<std::string, std::size_t>;
 private:
   Table table;
+  InnerTable inner_table;
   FunctionProp f_props;
 	static std::size_t table_level;
   static std::size_t vector_num;
@@ -43,6 +45,7 @@ public:
   }
   Indexer get_indexer() { return fname_indexer; }
   std::size_t get_fname_index(std::string s) { return fname_indexer[s]; }
+  InnerTable get_inner_table() { return inner_table; }
   void set_fname_index(std::string s) { fname_indexer[s] = vector_num++; }
 	//void set_symbol(std::string s, Properties p)  { table[s] = p; }
 	static void incr_level() { table_level++; }
@@ -67,7 +70,14 @@ public:
     }
     return std::string("unknown");
   }
-
+  void print_inner_table(std::string ind)
+  {
+    for(auto const& item : inner_table[ind])
+    {
+      std::cout << "\t";
+      std::cout << std::setw(30) << item.first << std::setw(20) << item.second << "\n";
+    }
+  }
   void print_table() { 
     for(std::size_t i = 0; i < table.size(); i++)
     {

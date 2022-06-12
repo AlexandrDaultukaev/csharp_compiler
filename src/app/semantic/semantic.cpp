@@ -17,6 +17,8 @@
 // ASTKw
 
 static std::string current_function_scope = "Global";
+static std::string current_scope = "";
+static std::size_t inner_counter = 0;
 
 namespace cs_lang {
   void print_semantic_report(SemanticVisitor sv) 
@@ -134,71 +136,164 @@ void SemanticVisitor::visit(ASTFuncCall& node) {
     }
 }
 void SemanticVisitor::visit(ASTScope& node) {
+
+    inner_counter++;
+    std::size_t fix_in_id = inner_counter;
+    std::size_t amount_in_scopes = 0;
     for(auto& child : node.get_statements())
     {
         child->accept(*this);
+        if(inner_counter != fix_in_id)
+        {
+            inner_counter = fix_in_id;
+            amount_in_scopes++;
+        }
+        if(current_scope == "")
+        {
+            current_scope = "scope";
+        }
     }
+    current_scope = "";
+    inner_counter += amount_in_scopes;
 }
 
 void SemanticVisitor::visit(ASTElse &node) 
 {
     node.get_scope()->accept(*this);
+    
+}
+
+std::string get_type_by_lit_type(std::string lit_type)
+{
+    if(lit_type.find("NUMBER") != std::string::npos || lit_type == "int")
+        return std::string("int");
+    if(lit_type.find("FLOAT") != std::string::npos || lit_type == "float")
+        return std::string("float");
+    if(lit_type.find("CHAR") != std::string::npos || lit_type == "char")
+        return std::string("char");
+    if(lit_type.find("STRING") != std::string::npos || lit_type == "string")
+        return std::string("string");
+    return std::string("unknwn");
 }
 
 void SemanticVisitor::visit(ASTArgs& node) {}
 void SemanticVisitor::visit(ASTAssign& node) {
-    bool is_def = node.get_lvalue()->get_var_type() == ""? false : true;
-    std::string lhs_type = "";
-    if(table[get_fname_index(current_function_scope)].contains(node.get_lvalue()->get_var_name()))
+    if(current_scope == "")
     {
-        lhs_type = table[get_fname_index(current_function_scope)][node.get_lvalue()->get_var_name()].type;
-    } else if(table[0].contains(node.get_lvalue()->get_var_name()))
-    {
-        lhs_type = table[0][node.get_lvalue()->get_var_name()].type;
-    }
-    if(node.get_rvalue1() != nullptr)
-    {
-        std::string type_r1 = "";
-        std::string type_r2 = "";
-        if(node.get_rvalue1()->is_literal())
+        bool is_def = node.get_lvalue()->get_var_type() == ""? false : true;
+        std::string lhs_type = "";
+        if(table[get_fname_index(current_function_scope)].contains(node.get_lvalue()->get_var_name()))
         {
-            type_r1 = get_literal_type(node.get_rvalue1()->get_var_name());
+            lhs_type = table[get_fname_index(current_function_scope)][node.get_lvalue()->get_var_name()].type;
+        } else if(table[0].contains(node.get_lvalue()->get_var_name()))
+        {
+            lhs_type = table[0][node.get_lvalue()->get_var_name()].type;
         }
-        else
+        if(node.get_rvalue1() != nullptr)
         {
-            type_r1 = table[get_fname_index(current_function_scope)][node.get_rvalue1()->get_var_name()].type;
-            //CHECK: 'string str = str;'
-            if(is_def && node.get_rvalue1()->get_var_name() == node.get_lvalue()->get_var_name())
+            std::string type_r1 = "";
+            std::string type_r2 = "";
+            if(node.get_rvalue1()->is_literal())
             {
-                errors.emplace_back(std::make_pair("Assign ERROR", "Use of unassigned local variable \'" + node.get_lvalue()->get_var_name() + "\' in line "+ std::to_string(node.get_line())));
+                type_r1 = get_literal_type(node.get_rvalue1()->get_var_name());
             }
-        }
-        if(lhs_type == type_r1)
-        {
-            if(node.get_rvalue2() != nullptr)
+            else
             {
-                if(node.get_rvalue2()->is_literal())
+                type_r1 = table[get_fname_index(current_function_scope)][node.get_rvalue1()->get_var_name()].type;
+                //CHECK: 'string str = str;'
+                if(is_def && node.get_rvalue1()->get_var_name() == node.get_lvalue()->get_var_name())
                 {
-                    type_r2 = get_literal_type(node.get_rvalue2()->get_var_name());
+                    errors.emplace_back(std::make_pair("Assign ERROR", "Use of unassigned local variable \'" + node.get_lvalue()->get_var_name() + "\' in line "+ std::to_string(node.get_line())));
                 }
-                else
+            }
+            if(lhs_type == type_r1)
+            {
+                if(node.get_rvalue2() != nullptr)
                 {
-                    type_r2 = table[get_fname_index(current_function_scope)][node.get_rvalue2()->get_var_name()].type;
-                    //CHECK: 'string str = "10" + str;'
-                    if(is_def && node.get_rvalue2()->get_var_name() == node.get_lvalue()->get_var_name())
+                    if(node.get_rvalue2()->is_literal())
                     {
-                        errors.emplace_back(std::make_pair("Assign ERROR", "Use of unassigned local variable \'" + node.get_lvalue()->get_var_name() + "in line "+ std::to_string(node.get_line()) + "\'"));
+                        type_r2 = get_literal_type(node.get_rvalue2()->get_var_name());
+                    }
+                    else
+                    {
+                        type_r2 = table[get_fname_index(current_function_scope)][node.get_rvalue2()->get_var_name()].type;
+                        //CHECK: 'string str = "10" + str;'
+                        if(is_def && node.get_rvalue2()->get_var_name() == node.get_lvalue()->get_var_name())
+                        {
+                            errors.emplace_back(std::make_pair("Assign ERROR", "Use of unassigned local variable \'" + node.get_lvalue()->get_var_name() + "in line "+ std::to_string(node.get_line()) + "\'"));
+                        }
+                    }
+                    if(lhs_type != type_r2)
+                    {
+                        errors.emplace_back(std::make_pair("Assign ERROR", "Cannot convert type \'" + lhs_type + "\' to \'" + type_r2 + "\' in line "+ std::to_string(node.get_lvalue()->get_line())));
                     }
                 }
-                if(lhs_type != type_r2)
-                {
-                    errors.emplace_back(std::make_pair("Assign ERROR", "Cannot convert type \'" + lhs_type + "\' to \'" + type_r2 + "\' in line "+ std::to_string(node.get_lvalue()->get_line())));
-                }
+            } else {
+                errors.emplace_back(std::make_pair("Assign ERROR", "Cannot convert type \'" + lhs_type + "\' to \'" + type_r1 + "\' in line "+ std::to_string(node.get_lvalue()->get_line())));
             }
-        } else {
-            errors.emplace_back(std::make_pair("Assign ERROR", "Cannot convert type \'" + lhs_type + "\' to \'" + type_r1 + "\' in line "+ std::to_string(node.get_lvalue()->get_line())));
         }
+    } else {
+        std::string l_type = "";
+        std::string r1_type = "";
+        std::string r2_type = "";
+        if(node.get_lvalue() != nullptr)
+        {
+            if(node.get_lvalue()->get_var_type() != "")
+            {
+                l_type = node.get_lvalue()->get_var_type();
+            } else {
+                if(!inner_table[std::to_string(inner_counter)].contains(node.get_lvalue()->get_var_name()))
+                {
+
+                    if(table[get_fname_index(current_function_scope)].contains(node.get_lvalue()->get_var_name()))
+                    {
+                        
+                        l_type = table[get_fname_index(current_function_scope)][node.get_lvalue()->get_var_name()].type;
+                    } else if(table[0].contains(node.get_lvalue()->get_var_name()))
+                    {
+                        
+                        l_type = table[0][node.get_lvalue()->get_var_name()].type;
+                        
+                    } else {
+                        std::cerr << "ERROR: Undefined variable " << node.get_lvalue()->get_var_name() << "in line " << node.get_lvalue()->get_line() << "\n";
+                        throw;
+                    }
+                } else {
+                    l_type = inner_table[std::to_string(inner_counter)][node.get_lvalue()->get_var_name()];
+                }
+                
+            }
+        }
+        if(node.get_rvalue1() != nullptr)
+        {
+            if(node.get_rvalue1()->is_literal())
+            {
+                r1_type = get_type_by_lit_type(node.get_rvalue1()->get_var_type());
+            } else {
+                r1_type = node.get_rvalue1()->get_var_type();
+            }
+            if(l_type != r1_type) {
+                append_error(std::make_pair("Assign ERROR", "Cannot convert type \'" + l_type + "\' to \'" + r1_type + "\' in line " + std::to_string(node.get_rvalue1()->get_line())));
+                throw;
+            }
+        }
+        if(node.get_rvalue2() != nullptr)
+        {
+            if(node.get_rvalue2()->is_literal())
+            {
+                
+                r2_type = get_type_by_lit_type(node.get_rvalue2()->get_var_type());
+            } else {
+                r2_type = node.get_rvalue2()->get_var_type();
+            }
+            if(l_type != r2_type) {
+                append_error(std::make_pair("Assign ERROR: ", "Cannot convert type \'" + l_type + "\' to \'" + r2_type + "\' in line " + std::to_string(node.get_rvalue2()->get_line())));
+            }
+        }
+
+        
     }
+    
     
 }
 void SemanticVisitor::visit(ASTReturn& node) {}
@@ -220,17 +315,26 @@ void SemanticVisitor::visit(ASTIf& node) {
     } else {
         errors.emplace_back(std::make_pair("If ERROR", "Cannot implicitly convert type \'" + node.get_second_type() + "\' to \'bool\' in line "+ std::to_string(node.get_line())));
     }
+    current_scope = "if";
     node.get_scope()->accept(*this);
+    current_scope = "";
+    
     if(node.get_else() != nullptr)
     {
+        current_scope = "else";
         node.get_else()->accept(*this);
+        current_scope = "";
+       
     }
 }
 void SemanticVisitor::visit(ASTFor& node) {
     node.get_assing()->accept(*this);
     node.get_cond()->accept(*this);
     node.get_op()->accept(*this);
+    current_scope = "for";
     node.get_scope()->accept(*this);
+    current_scope = "";
+    
 }
 void SemanticVisitor::visit(ASTForCond& node) {
     std::string type_second_operand = "";

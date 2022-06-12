@@ -462,12 +462,28 @@ void SetLiteralVariable(ASTVariable *var, CsharpParser::LiteralContext *ctx) {
   }
 }
 
+bool is_first_literal(std::string text)
+{
+  std::size_t pos = text.find("=");
+  if(text[pos+1] == ' ')
+  {
+    pos += 2;
+  }
+  if (text[pos] == '\'' || text[pos] == '\"' || std::isdigit(text[pos]))
+  {
+    return true;
+  }
+  return false;
+}
+
 void VisitorInitialiser::visit(ASTAssign &node) {
   auto ctx = m_context.as<CsharpParser::Assign_statementContext *>();
   ASTVariable *l = new ASTVariable;
   ASTVariable *r1 = new ASTVariable;
   ASTVariable *r2 = new ASTVariable;
   ASTFuncCall *f = new ASTFuncCall;
+
+
   bool is_r2_set = false;
   int ind = 0;
   int lit_ind = 0;
@@ -505,7 +521,11 @@ void VisitorInitialiser::visit(ASTAssign &node) {
     delete f;
     if((ctx->ID(ind) != nullptr) || ctx->literal(lit_ind) != nullptr)
     {
-      if (ctx->literal(lit_ind) != nullptr) {
+      std::size_t a = ctx->start->getStartIndex();
+      std::size_t b = ctx->stop->getStopIndex();
+      antlr4::misc::Interval interval(a, b);
+      std::string orig_text = ctx->start->getInputStream()->getText(interval);
+      if ((ctx->literal(lit_ind) != nullptr) && is_first_literal(orig_text)) {
         SetLiteralVariable(r1, ctx->literal(lit_ind));
         lit_ind++;
       } else if(ctx->ID(ind) != nullptr) {
@@ -533,7 +553,7 @@ void VisitorInitialiser::visit(ASTAssign &node) {
         node.set_rvalue2(nullptr);
       }
     }
-
+    
   }
 }
 

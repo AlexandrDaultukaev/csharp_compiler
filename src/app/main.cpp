@@ -67,12 +67,16 @@ int main (int argc, const char * argv []) {
     if(dump_tokens_key) {
         cs_lang::dump_tokens(filepath);
     }
-    SemanticVisitor semantic_visitor(visitor.get_table(), visitor.get_fprops(), visitor.get_indexer());
+    SemanticVisitor semantic_visitor(visitor.get_table(), visitor.get_fprops(), visitor.get_indexer(), visitor.get_inner_table());
     parse_result.m_program->accept(semantic_visitor);
-    if(dump_sem)
+    // if(dump_sem)
+    // {
+    cs_lang::print_semantic_report(semantic_visitor);
+    if(semantic_visitor.get_errors().size() > 0)
     {
-        cs_lang::print_semantic_report(semantic_visitor);
+        throw;
     }
+    // }
     if(optim1 || wall)
     {
         OptimizerVisitor visitor_optimizer(visitor.get_table(), visitor.get_indexer(), wall, optim1);
@@ -81,9 +85,9 @@ int main (int argc, const char * argv []) {
     if (dump_ast || xml_file != "") {
         cs_lang::dump_ast(parse_result.m_program, xml_file, dump_ast);
     }
-    std::ofstream stream(fileout);
-    CodeGen code_generator(stream, filepath, fileout);
-    parse_result.m_program->accept(code_generator);
-    stream.close();
+    // std::ofstream stream(fileout);
+    // CodeGen code_generator(stream, filepath, fileout);
+    // parse_result.m_program->accept(code_generator);
+    // stream.close();
     return 0;
 }
