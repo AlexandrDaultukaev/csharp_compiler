@@ -88,17 +88,31 @@ void SemanticVisitor::visit(ASTFunction& node)
         std::string ret_type = table[get_fname_index(current_function_scope)][node.get_return()->get_return_value()+"_return_"+std::to_string(lvl)].type;
         std::transform(ret_type.begin(), ret_type.end(), ret_type.begin(),
             [](unsigned char c){ return std::tolower(c); });
-        if(ret_type != node.return_type())
+        std::string node_ret_type = node.return_type();
+        if(node.get_return()->is_literal())
         {
-            errors.emplace_back(std::make_pair("Function-Definition ERROR", "Cannot convert type \'" + ret_type + "\' to \'" + node.return_type() + "\'in line "+ std::to_string(node.get_line())));
+            if(ret_type == "NUMBER" || ret_type == "number")
+            {
+                ret_type = "int";
+            } else if(ret_type == "FLOAT_NUMBER" || ret_type == "float_number")
+            {
+                ret_type = "float";
+            } else if(ret_type == "CHAR")
+            {
+                ret_type = "char";
+            } else if(ret_type == "STRING")
+            {
+                ret_type = "string";
+            }
+        }
+        if(ret_type != node_ret_type)
+        {
+            errors.emplace_back(std::make_pair("Function-Definition ERROR", "Cannot convert type \'" + ret_type + "\' to \'" + node_ret_type + "\' in line "+ std::to_string(node.get_line())));
         }
     }
 
 
-    for(auto& child : node.get_scope()->get_statements())
-    {
-        child->accept(*this);
-    }
+    node.get_scope()->accept(*this);
 }
 
 void SemanticVisitor::visit(ASTVariable& node) {}
@@ -165,13 +179,13 @@ void SemanticVisitor::visit(ASTElse &node)
 
 std::string get_type_by_lit_type(std::string lit_type)
 {
+    if(lit_type.find("FLOAT") != std::string::npos || lit_type == "float" || lit_type.find("FLOAT_NUMBER") != std::string::npos)
+        return std::string("float");
     if(lit_type.find("NUMBER") != std::string::npos || lit_type == "int")
         return std::string("int");
-    if(lit_type.find("FLOAT") != std::string::npos || lit_type == "float")
-        return std::string("float");
     if(lit_type.find("CHAR") != std::string::npos || lit_type == "char")
         return std::string("char");
-    if(lit_type.find("STRING") != std::string::npos || lit_type == "string")
+    if(lit_type.find("STRING") != std::string::npos || lit_type == "string" || lit_type.find("TEXT") != std::string::npos)
         return std::string("string");
     return std::string("unknwn");
 }
@@ -182,24 +196,34 @@ void SemanticVisitor::visit(ASTAssign& node) {
     {
         bool is_def = node.get_lvalue()->get_var_type() == ""? false : true;
         std::string lhs_type = "";
-        if(table[get_fname_index(current_function_scope)].contains(node.get_lvalue()->get_var_name()))
+        if(inner_table[std::to_string(inner_counter)].contains(node.get_lvalue()->get_var_name()))
+        {
+            lhs_type = inner_table[std::to_string(inner_counter)][node.get_lvalue()->get_var_name()];
+        }
+        else if(table[get_fname_index(current_function_scope)].contains(node.get_lvalue()->get_var_name()))
         {
             lhs_type = table[get_fname_index(current_function_scope)][node.get_lvalue()->get_var_name()].type;
         } else if(table[0].contains(node.get_lvalue()->get_var_name()))
         {
             lhs_type = table[0][node.get_lvalue()->get_var_name()].type;
-        }
+        } 
         if(node.get_rvalue1() != nullptr)
         {
             std::string type_r1 = "";
             std::string type_r2 = "";
             if(node.get_rvalue1()->is_literal())
             {
-                type_r1 = get_literal_type(node.get_rvalue1()->get_var_name());
+                type_r1 = get_type_by_lit_type(node.get_rvalue1()->get_var_type());
             }
             else
             {
-                type_r1 = table[get_fname_index(current_function_scope)][node.get_rvalue1()->get_var_name()].type;
+                if(table[get_fname_index(current_function_scope)].contains(node.get_rvalue1()->get_var_name()))
+                {
+                    type_r1 = table[get_fname_index(current_function_scope)][node.get_rvalue1()->get_var_name()].type;
+                } else if(inner_table[std::to_string(inner_counter)].contains(node.get_rvalue1()->get_var_name()))
+                {
+                    type_r1 = inner_table[std::to_string(inner_counter)][node.get_rvalue1()->get_var_name()];
+                }
                 //CHECK: 'string str = str;'
                 if(is_def && node.get_rvalue1()->get_var_name() == node.get_lvalue()->get_var_name())
                 {
@@ -225,11 +249,11 @@ void SemanticVisitor::visit(ASTAssign& node) {
                     }
                     if(lhs_type != type_r2)
                     {
-                        errors.emplace_back(std::make_pair("Assign ERROR", "Cannot convert type \'" + lhs_type + "\' to \'" + type_r2 + "\' in line "+ std::to_string(node.get_lvalue()->get_line())));
+                        errors.emplace_back(std::make_pair("Assign ERROR1", "Cannot convert type \'" + lhs_type + "\' to \'" + type_r2 + "\' in line "+ std::to_string(node.get_lvalue()->get_line())));
                     }
                 }
             } else {
-                errors.emplace_back(std::make_pair("Assign ERROR", "Cannot convert type \'" + lhs_type + "\' to \'" + type_r1 + "\' in line "+ std::to_string(node.get_lvalue()->get_line())));
+                errors.emplace_back(std::make_pair("Assign ERROR2", "Cannot convert type \'" + lhs_type + "\' to \'" + type_r1 + "\' in line "+ std::to_string(node.get_lvalue()->get_line())));
             }
         }
     } else {
@@ -266,6 +290,7 @@ void SemanticVisitor::visit(ASTAssign& node) {
         }
         if(node.get_rvalue1() != nullptr)
         {
+            
             if(node.get_rvalue1()->is_literal())
             {
                 r1_type = get_type_by_lit_type(node.get_rvalue1()->get_var_type());
@@ -273,8 +298,9 @@ void SemanticVisitor::visit(ASTAssign& node) {
                 r1_type = node.get_rvalue1()->get_var_type();
             }
             if(l_type != r1_type) {
+                std::cout << "r1type : " << node.get_rvalue1()->get_var_type() << "\n";
+                std::cout << "r1type : " << r1_type << "\n";
                 append_error(std::make_pair("Assign ERROR", "Cannot convert type \'" + l_type + "\' to \'" + r1_type + "\' in line " + std::to_string(node.get_rvalue1()->get_line())));
-                throw;
             }
         }
         if(node.get_rvalue2() != nullptr)
@@ -299,18 +325,61 @@ void SemanticVisitor::visit(ASTAssign& node) {
 void SemanticVisitor::visit(ASTReturn& node) {}
 void SemanticVisitor::visit(ASTIf& node) {
     std::string type_second_operand = "";
+    std::string type_first_operand = "";
     if(node.get_second() != "")
     {
         if(node.is_literal())
         {
-            type_second_operand = get_literal_type(node.get_second());
+            if(table[get_fname_index(current_function_scope)].contains(node.get_second()))
+            {
+                type_second_operand = get_literal_type(node.get_second());
+            } else if(inner_table[std::to_string(inner_counter)].contains(node.get_second()))
+            {
+                type_second_operand = inner_table[std::to_string(inner_counter)][node.get_second()];
+                if(type_second_operand == "FLOAT" || type_second_operand == "FLOAT_NUMBER")
+                {
+                    type_second_operand = "float";
+                } else if(type_second_operand == "NUMBER")
+                {
+                    type_second_operand = "int";
+                }else if(type_second_operand == "TEXT" || type_second_operand == "STRING")
+                {
+                    type_second_operand = "string";
+                }else if(type_second_operand == "CHAR")
+                {
+                    type_second_operand = "char";
+                }
+            }
+        
         } else {
-            type_second_operand = table[get_fname_index(current_function_scope)][node.get_second()].type;
+            
+            if(inner_table[std::to_string(inner_counter)].contains(node.get_second()))
+            {
+                type_second_operand = inner_table[std::to_string(inner_counter)][node.get_second()];
+            } else if(table[get_fname_index(current_function_scope)].contains(node.get_second()))
+            {
+                type_second_operand = table[get_fname_index(current_function_scope)][node.get_second()].type;
+                
+            } else if(table[0].contains(node.get_second()))
+            {
+                type_second_operand = table[0][node.get_second()].type;
+            }
+        }
+        if(inner_table[std::to_string(inner_counter)].contains(node.get_first()))
+        {
+            
+            type_first_operand = inner_table[std::to_string(inner_counter)][node.get_first()];
+        } else if(table[get_fname_index(current_function_scope)].contains(node.get_first()))
+        {
+            type_first_operand = table[get_fname_index(current_function_scope)][node.get_first()].type;
+        } else if(table[0].contains(node.get_first()))
+        {
+            type_second_operand = table[0][node.get_first()].type;
         }
 
-        if(table[get_fname_index(current_function_scope)][node.get_first()].type != type_second_operand)
+        if(type_first_operand != type_second_operand)
         {
-            errors.emplace_back(std::make_pair("If ERROR", "Operator \'" + node.get_op() + "\' cannot be applied to operands of type \'"+ table[get_fname_index(current_function_scope)][node.get_first()].type + "\' to \'" + type_second_operand + "\' in line "+ std::to_string(node.get_line())));
+            errors.emplace_back(std::make_pair("If ERROR", "Operator \'" + node.get_op() + "\' cannot be applied to operands of type \'"+ type_first_operand + "\' to \'" + type_second_operand + "\' in line "+ std::to_string(node.get_line())));
         }
     } else {
         errors.emplace_back(std::make_pair("If ERROR", "Cannot implicitly convert type \'" + node.get_second_type() + "\' to \'bool\' in line "+ std::to_string(node.get_line())));
@@ -342,16 +411,50 @@ void SemanticVisitor::visit(ASTForCond& node) {
     {
         if(node.is_literal())
         {
-            type_second_operand = get_literal_type(node.get_second());
+            if(table[get_fname_index(current_function_scope)].contains(node.get_second()))
+            {
+                type_second_operand = get_literal_type(node.get_second());
+            } else if(inner_table[std::to_string(inner_counter+1)].contains(node.get_second()))
+            {
+                type_second_operand = inner_table[std::to_string(inner_counter+1)][node.get_second()];
+                if(type_second_operand == "FLOAT" || type_second_operand == "FLOAT_NUMBER")
+                {
+                    type_second_operand = "float";
+                } else if(type_second_operand == "NUMBER")
+                {
+                    type_second_operand = "int";
+                }else if(type_second_operand == "TEXT" || type_second_operand == "STRING")
+                {
+                    type_second_operand = "string";
+                }else if(type_second_operand == "CHAR")
+                {
+                    type_second_operand = "char";
+                }
+            }
+            
         } else {
-            type_second_operand = table[get_fname_index(current_function_scope)][node.get_second()].type;
+            if(table[get_fname_index(current_function_scope)].contains(node.get_second()))
+            {
+                type_second_operand = table[get_fname_index(current_function_scope)][node.get_second()].type;
+            } else if(inner_table[std::to_string(inner_counter+1)].contains(node.get_second()))
+            {
+                type_second_operand = inner_table[std::to_string(inner_counter+1)][node.get_second()];
+            }
         }
     } else {
         errors.emplace_back(std::make_pair("For-condition ERROR","Cannot implicitly convert type \'" + table[get_fname_index(current_function_scope)][node.get_second()].type + "\' to \'bool\' in line "+ std::to_string(node.get_line())));
     }
     if(table[get_fname_index(current_function_scope)][node.get_first()].type != "int" && table[get_fname_index(current_function_scope)][node.get_first()].type != "float")
     {
-        errors.emplace_back(std::make_pair("For-condition ERROR", "Cannot iterate by type \'" + table[get_fname_index(current_function_scope)][node.get_first()].type + "\' in line "+ std::to_string(node.get_line())));
+        std::cout << "y" << node.get_first() << "\n";
+        std::cout << "y" << inner_counter << "\n";
+        std::cout << "y" << inner_table[std::to_string(inner_counter)].contains(node.get_first()) << "\n";
+        std::cout << "y" << inner_table[std::to_string(inner_counter+1)].contains(node.get_first()) << "\n";
+        if(inner_table[std::to_string(inner_counter+1)][node.get_first()] != "int" && inner_table[std::to_string(inner_counter+1)][node.get_first()] != "float")
+        {
+            errors.emplace_back(std::make_pair("For-condition ERROR", "Cannot iterate by type \'" + table[get_fname_index(current_function_scope)][node.get_first()].type + "\' in line "+ std::to_string(node.get_line())));
+        }
+            
     }
     
 }
@@ -362,7 +465,10 @@ void SemanticVisitor::visit(ASTForOp& node) {
     } else {
         if(table[get_fname_index(current_function_scope)][node.get_id()].type != "int" && table[get_fname_index(current_function_scope)][node.get_id()].type != "float")
         {
-            errors.emplace_back(std::make_pair("For-operation ERROR","Operator \'" + node.get_unary_op() + "\' cannot be applied to operand of type \'"+ table[get_fname_index(current_function_scope)][node.get_id()].type + "\' in line "+ std::to_string(node.get_line())));
+            if(inner_table[std::to_string(inner_counter+1)][node.get_id()] != "int" && inner_table[std::to_string(inner_counter+1)][node.get_id()] != "float")
+            {
+                errors.emplace_back(std::make_pair("For-operation ERROR","Operator \'" + node.get_unary_op() + "\' cannot be applied to operand of type \'"+ table[get_fname_index(current_function_scope)][node.get_id()].type + "\' in line "+ std::to_string(node.get_line())));
+            }
         }
     }
 }

@@ -71,16 +71,13 @@ int main (int argc, const char * argv []) {
     parse_result.m_program->accept(semantic_visitor);
     // if(dump_sem)
     // {
-    if(semantic_visitor.get_errors().size() > 0)
-    {
-        cs_lang::print_semantic_report(semantic_visitor);
-    }
     
-    if(semantic_visitor.get_errors().size() > 0)
-    {
-        throw;
-    }
+    // if(semantic_visitor.get_errors().size() > 0)
+    // {
+    //     cs_lang::print_semantic_report(semantic_visitor);
+    //     exit(EXIT_FAILURE);
     // }
+    
     if(optim1 || wall)
     {
         OptimizerVisitor visitor_optimizer(visitor.get_table(), visitor.get_indexer(), wall, optim1);
@@ -89,9 +86,9 @@ int main (int argc, const char * argv []) {
     if (dump_ast || xml_file != "") {
         cs_lang::dump_ast(parse_result.m_program, xml_file, dump_ast);
     }
-    // std::ofstream stream(fileout);
-    // CodeGen code_generator(stream, filepath, fileout);
-    // parse_result.m_program->accept(code_generator);
-    // stream.close();
+    std::ofstream stream(fileout);
+    CodeGen code_generator(stream, filepath, fileout);
+    parse_result.m_program->accept(code_generator);
+    stream.close();
     return 0;
 }

@@ -77,6 +77,7 @@ public:
       std::cout << "\t";
       std::cout << std::setw(30) << item.first << std::setw(20) << item.second << "\n";
     }
+    std::cout << "------------------------------------\n";
   }
   void print_table() { 
     for(std::size_t i = 0; i < table.size(); i++)

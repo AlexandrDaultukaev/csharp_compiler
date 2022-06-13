@@ -1,9 +1,16 @@
 int main()
 {
-    int b = 32;
-    int c = 24;
-    int d = 12;
-    int a = c + b;
-    b = 12 - d;
-    return b;
+    float f = 3.0;
+    
+    if(f != 3.2)
+    {
+        for(float g = 0.0; g < f; g++)
+        {
+            WriteLine(f);
+        }
+    }
+    
+    
+
+    return 0;
 }

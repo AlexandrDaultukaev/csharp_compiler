@@ -69,10 +69,7 @@ void VisitorTable::visit(ASTFunction& node)
 
     table[get_fname_index(current_function)][node.func_name()] = p;
     
-    for(auto& scope : node.get_scope()->get_statements())
-    {
-        scope->accept(*this);
-    }
+    node.get_scope()->accept(*this);
     if(node.get_return() != nullptr)
     {
         // Properties p_return;
@@ -151,6 +148,7 @@ void VisitorTable::visit(ASTVariable& node)
         }
         if(current_scope != "")
         {
+            std::cout << "varname: " << node.get_var_name() << "::" << inner_table[std::to_string(inner_counter+1)].contains(node.get_var_name()) << ":::" << node.get_expr_type() << "\n";
             if(!node.is_literal() && node.get_var_type() != "" && inner_table[std::to_string(inner_counter)].contains(node.get_var_name()))
             {
                 try {
@@ -169,6 +167,7 @@ void VisitorTable::visit(ASTVariable& node)
         }
 
         //UNDEFINED VARIABLE ERROR
+        
         if(!table[get_fname_index(current_function)].contains(node.get_var_name()) && node.get_var_type() == "" && !inner_table[std::to_string(inner_counter)].contains(node.get_var_name()))
         {
             //CHECK IF VARIABLE EXSITS IN GLOBAL SCOPE
@@ -207,7 +206,7 @@ void VisitorTable::visit(ASTVariable& node)
 
     std::string key = node.get_var_name();
 
-    if((node.get_frag() == "RIGHT_ASSIGN1" || node.get_frag() == "RIGHT_ASSIGN2") && p.fragment_type[0] != 'L')
+    if((node.get_frag() == "RIGHT_ASSIGN1" || node.get_frag() == "RIGHT_ASSIGN2") && p.fragment_type[0] != 'L' && current_scope == "")
     {
 
         p.type = table[get_fname_index(current_function)][node.get_var_name()].type;
@@ -224,6 +223,7 @@ void VisitorTable::visit(ASTVariable& node)
         table[get_fname_index(current_function)][key] = p;
     } else {
         std::string type_in_var = node.get_var_type();
+        
         if(type_in_var == "")
         {
             if(inner_table[std::to_string(inner_counter)].contains(node.get_var_name()))
@@ -236,7 +236,7 @@ void VisitorTable::visit(ASTVariable& node)
                 type_in_var = table[0][node.get_var_name()].type;
             } else {
                 try {
-                    throw std::runtime_error("ERROR: Undefined variable \'" + node.get_var_name() + "\'");
+                    throw std::runtime_error("ERROR: Undefinefd variable \'" + node.get_var_name() + "\'");
                 } catch(std::runtime_error& e)
                 {
                     std::cerr << e.what() << "\n";
@@ -244,8 +244,16 @@ void VisitorTable::visit(ASTVariable& node)
                 }
             }
         }
+        if(node.get_expr_type() == "for")
+        {
+            inner_counter++;
+        }
         
         inner_table[std::to_string(inner_counter)][node.get_var_name()] = type_in_var;
+        if(node.get_expr_type() == "for")
+        {
+            inner_counter--;
+        }
     }
     
 
@@ -281,7 +289,10 @@ void VisitorTable::visit(ASTScope& node)
 {
     if(current_scope != "" && inner_counter > 0)
     {
-        inner_table[std::to_string(inner_counter+1)] = inner_table[std::to_string(inner_counter)];
+        for(auto& item : inner_table[std::to_string(inner_counter)])
+        {
+            inner_table[std::to_string(inner_counter+1)][item.first] = item.second;
+        }
     }
     inner_counter++;
     current_scope = "scope";
@@ -398,18 +409,47 @@ void VisitorTable::visit(ASTReturn& node)
 
 void VisitorTable::visit(ASTIf& node)
 {
-    // Properties p1;
-    // p1.fragment_type = "IFVARIABLE";
-    // p1.level = table_level;
-    // p1.type = node.get_first_type();
-    // table[node.get_first()] = p1;
+    Properties p1;
+    p1.fragment_type = "IFVARIABLE";
+    p1.level = table_level;
+    p1.type = node.get_first_type();
+    if(current_scope == "")
+    {
+        table[get_fname_index(current_function)][node.get_first()] = p1;
+    } else {
+        
+        if(table[get_fname_index(current_function)].contains(node.get_first()))
+        {
+            inner_table[std::to_string(inner_counter)][node.get_first()] = table[get_fname_index(current_function)][node.get_first()].type;
+        } else if(table[0].contains(node.get_first()))
+        {
+            inner_table[std::to_string(inner_counter)][node.get_first()] = table[0][node.get_first()].type;
+        
+        } else if(!inner_table[std::to_string(inner_counter)].contains(node.get_first())) {
+            try {
+                throw std::runtime_error("ERROR: Undefined variable \'" + node.get_first() + "\' in if-statement\n");
+            } catch(std::runtime_error& e)
+            {
+                std::cerr << e.what() << "\n";
+                exit(EXIT_FAILURE);
+            }
+        }
+        
+    }
+    
     if(node.is_literal())
     {
-        Properties p2;
-        p2.fragment_type = "LIFVARIABLE";
-        p2.level = table_level;
-        p2.type = node.get_second_type();
-        table[get_fname_index(current_function)][node.get_second()] = p2;
+        if(current_scope == "")
+        {
+            Properties p2;
+            p2.fragment_type = "LIFVARIABLE";
+            p2.level = table_level;
+            p2.type = node.get_second_type();
+            table[get_fname_index(current_function)][node.get_second()] = p2;
+        } else {
+            inner_table[std::to_string(inner_counter)][node.get_second()] = node.get_second_type();
+        }
+        
     }
     incr_level();
     std::size_t cs = inner_counter+1;
@@ -428,7 +468,9 @@ void VisitorTable::visit(ASTFor& node)
 {
     if(node.get_assing() != nullptr)
     {
+        node.get_assing()->get_lvalue()->set_expr_type("for");
         node.get_assing()->accept(*this);
+        node.get_assing()->get_lvalue()->set_expr_type("");
     }
 
     if(node.get_cond() != nullptr)
@@ -473,6 +515,8 @@ void VisitorTable::visit(ASTForCond& node)
         if(node.get_second()[0] == std::string("\"")[0])
         {
             p2.type = "TEXT";
+        } else if(node.get_second().find('.') != std::string::npos) {
+            p2.type = "FLOAT_NUMBER";
         } else if(std::isdigit(node.get_second()[0])) {
             p2.type = "NUMBER";
         } 
@@ -482,12 +526,14 @@ void VisitorTable::visit(ASTForCond& node)
         p2.fragment_type = "FORCONDVARIABLE";
         if(table[get_fname_index(current_function)].contains(node.get_second()))
         {
-            
             p2.type = table[get_fname_index(current_function)][node.get_second()].type;
+        } else if(inner_table[std::to_string(inner_counter)].contains(node.get_second()))
+        {
+            p2.type = inner_table[std::to_string(inner_counter)][node.get_second()];
         } else {
             // for(int i = 0; i < k(undefined); i++)
             try {
-                throw std::runtime_error("ERROR: Undefined variable \'" + node.get_second() + "\' in cond-expression: \'" + node.get_first() + " " + node.get_op() + " " + node.get_second() + "\'");
+                throw std::runtime_error("ERROR1: Undefined variable \'" + node.get_second() + "\' in cond-expression: \'" + node.get_first() + " " + node.get_op() + " " + node.get_second() + "\'");
             } catch(std::runtime_error& e)
             {
                 std::cerr << e.what() << "\n";
@@ -499,22 +545,32 @@ void VisitorTable::visit(ASTForCond& node)
     // for(int i = 0; j(undefined) < 10; i++)
     if(!table[get_fname_index(current_function)].contains(node.get_first()))
     {
-        try {
-            throw std::runtime_error("ERROR: Undefined variable \'" + node.get_first() + "\' in cond-expression: \'" + node.get_first() + " " + node.get_op() + " " + node.get_second() + "\'");
-        } catch(std::runtime_error& e)
+        if(!inner_table[std::to_string(inner_counter+1)].contains(node.get_first()))
         {
-            std::cerr << e.what() << "\n";
-            exit(EXIT_FAILURE);
+            try {
+                throw std::runtime_error("ERROR2: Undefined variable \'" + node.get_first() + "\' in cond-expression: \'" + node.get_first() + " " + node.get_op() + " " + node.get_second() + "\'");
+            } catch(std::runtime_error& e)
+            {
+                std::cerr << e.what() << "\n";
+                exit(EXIT_FAILURE);
+            }
         }
     }
-    table[get_fname_index(current_function)][node.get_second()] = p2;
+    if(current_scope == "")
+    {
+        table[get_fname_index(current_function)][node.get_second()] = p2;
+    } else {
+        inner_table[std::to_string(inner_counter+1)][node.get_second()] = p2.type;
+    }
+    
     // table[get_fname_index(current_function)][node.get_second()+"_cond" + "_" + std::to_string(table_level)] = p2;
 
-    Properties p1;
-    p1.fragment_type = "FORCONDVARIABLE";
-    p1.level = table_level;
-    p1.type = table[get_fname_index(current_function)][node.get_first()].type;
-    table[get_fname_index(current_function)][node.get_first()] = p1;
+    // Properties p1;
+    // p1.fragment_type = "FORCONDVARIABLE";
+    // p1.level = table_level;
+    // p1.type = table[get_fname_index(current_function)][node.get_first()].type;
+    // table[get_fname_index(current_function)][node.get_first()] = p1;
+
     // table[get_fname_index(current_function)][node.get_first()+"_cond" + "_" + std::to_string(table_level)] = p1;
 }
 
@@ -529,7 +585,7 @@ void VisitorTable::visit(ASTForOp& node)
         Properties p1;
         p1.fragment_type = "FOROPVARIABLE";
         p1.level = table_level;
-        if(!table[get_fname_index(current_function)].contains(node.get_id()))
+        if(!table[get_fname_index(current_function)].contains(node.get_id()) && !inner_table[std::to_string(inner_counter+1)].contains(node.get_id()))
         {
             try {
             throw std::runtime_error("ERROR: Undefined variable \'" + node.get_id() + "\' in loop-expression: \'" + node.get_id() + node.get_unary_op() + "\'");
@@ -539,8 +595,16 @@ void VisitorTable::visit(ASTForOp& node)
                 exit(EXIT_FAILURE);
             }
         }
-        p1.type = table[get_fname_index(current_function)][node.get_id()].type;
-        table[get_fname_index(current_function)][node.get_id()] = p1;
+        if(current_scope == "" && table[get_fname_index(current_function)].contains(node.get_id()))
+        {
+            p1.type = table[get_fname_index(current_function)][node.get_id()].type;
+        }
+        
+        if(current_scope == "")
+        {   
+            table[get_fname_index(current_function)][node.get_id()] = p1;
+        }
+        
         //table[get_fname_index(current_function)][node.get_id()+"_op" + "_" + std::to_string(table_level)] = p1;
     }
 }

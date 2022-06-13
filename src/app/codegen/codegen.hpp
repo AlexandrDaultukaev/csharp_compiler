@@ -28,9 +28,10 @@ public:
   void visit(ASTAssign &node) override;
   void visit(ASTReturn &node) {}
   void visit(ASTIf &node) override;
-  void visit(ASTFor &node) {}
+  void visit(ASTFor &node) override;
   void visit(ASTForCond &node) {}
   void visit(ASTForOp &node) {}
   void visit(ASTKw &node) {}
-  void visit(ASTElse &node) {}
+  void visit(ASTElse &node) override;
+  void visit(ASTPrint &node) override;
 };

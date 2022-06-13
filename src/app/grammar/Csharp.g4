@@ -108,12 +108,13 @@ fragment PLUS: '+';
 fragment MINUS: '-';
 fragment PERS: '%';
 
-LOGIC_OP: EQ | LESS | MR | MRQ | LESSQ;
+LOGIC_OP: EQ | LESS | MR | MRQ | LESSQ | NEQ;
 fragment EQ: '==';
 fragment LESS: '<';
 fragment MR: '>';
 fragment MRQ: '>=';
 fragment LESSQ: '<=';
+fragment NEQ: '!=';
 
 SEMICOLON: ';';
 RLP: '(';

@@ -414,7 +414,7 @@ void VisitorInitialiser::visit(ASTScope &node) {
               static_cast<ASTAssign*>(child2)->get_lvalue()->set_expr_type("else");
             } else if(node.get_scope_name() == "for")
             {
-              static_cast<ASTAssign*>(child2)->get_lvalue()->set_expr_type("for");
+              static_cast<ASTAssign*>(child2)->get_lvalue()->set_expr_type("");
             }
             if(static_cast<ASTAssign*>(child2)->get_lvalue()->get_var_type() != "")
             {
@@ -496,7 +496,7 @@ bool is_first_literal(std::string text)
   {
     pos += 2;
   }
-  if (text[pos] == '\'' || text[pos] == '\"' || std::isdigit(text[pos]))
+  if (text[pos] == '\'' || text[pos] == '\"' || std::isdigit(text[pos]) || text[pos] == '-')
   {
     return true;
   }
@@ -744,7 +744,7 @@ void VisitorInitialiser::visit(ASTIf &node) {
     } else if (ctx->literal()->CHARv() != nullptr) {
       node.set_second_type("CHAR");
     } else if (ctx->literal()->FLOAT_NUMBER() != nullptr) {
-      node.set_second_type("FLOAT");
+      node.set_second_type("FLOAT_NUMBER");
     } else if (ctx->literal()->TEXT() != nullptr) {
       node.set_second_type("STRING");
     }
