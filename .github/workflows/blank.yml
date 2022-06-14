@@ -19,7 +19,11 @@ jobs:
       
       - name: Git clone repo
         uses: actions/checkout@v1
-
+      
+      - name: Install LLVM and Clang
+        uses: KyleMayes/install-llvm-action@v1
+        with:
+            version: "10.0"
       # Runs a single command using the runners shell
       - name: Grammar install
         run: chmod +x install_grammar.sh && ./install_grammar.sh
