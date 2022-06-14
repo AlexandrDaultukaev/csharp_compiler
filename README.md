@@ -4,7 +4,7 @@ compilers-1-AlexandrDaultukaev created by GitHub Classroom
 ### ИВ-921 Даултукаев Александр.
 
 Здесь находится описание следующих лабораторных работ:
-### Lab 1 & Lab 2 & Lab 3 & Lab 4.
+### Lab 1 & Lab 2 & Lab 3 & Lab 4 & Lab 5 & Lab 6.
 Лексер и парсер для языка C#
 
 Для запуска необходимо:
@@ -158,6 +158,9 @@ return i;
     </scope>
 </program>
 ```
+
+``--dump-asm``(optional) \
+ключ, для вывода llvm ir в терминал
 
 ``-f, --file``(required) \
 ключ, указывающий лексеру какой файл разбить на токены \
