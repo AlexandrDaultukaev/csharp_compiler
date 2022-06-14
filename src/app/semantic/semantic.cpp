@@ -156,6 +156,7 @@ void SemanticVisitor::visit(ASTFuncCall& node) {
 void SemanticVisitor::visit(ASTScope& node) {
 
     inner_counter++;
+    current_scope = "scope";
     std::size_t fix_in_id = inner_counter;
     std::size_t amount_in_scopes = 0;
     for(auto& child : node.get_statements())
@@ -274,6 +275,10 @@ void SemanticVisitor::visit(ASTAssign& node) {
             } else {
                 if(!inner_table[std::to_string(inner_counter)].contains(node.get_lvalue()->get_var_name()))
                 {
+                    if(inner_table[std::to_string(inner_counter+1)].contains(node.get_lvalue()->get_var_name()))
+                    {
+                        l_type = inner_table[std::to_string(inner_counter+1)][node.get_lvalue()->get_var_name()];
+                    }
 
                     if(table[get_fname_index(current_function_scope)].contains(node.get_lvalue()->get_var_name()))
                     {
@@ -284,10 +289,11 @@ void SemanticVisitor::visit(ASTAssign& node) {
                         l_type = table[0][node.get_lvalue()->get_var_name()].type;
                         
                     } else {
-                        std::cerr << "ERROR: Undefined variable " << node.get_lvalue()->get_var_name() << "in line " << node.get_lvalue()->get_line() << "\n";
+                        std::cerr << "ERROR: Undefined variable " << node.get_lvalue()->get_var_name() << " in line " << node.get_lvalue()->get_line() << "\n";
                         throw;
                     }
                 } else {
+                    
                     l_type = inner_table[std::to_string(inner_counter)][node.get_lvalue()->get_var_name()];
                 }
                 
@@ -307,6 +313,10 @@ void SemanticVisitor::visit(ASTAssign& node) {
                     if(inner_table[std::to_string(inner_counter)].contains(node.get_rvalue1()->get_var_name()))
                     {
                         r1_type = inner_table[std::to_string(inner_counter)][node.get_rvalue1()->get_var_name()];
+                    }
+                    else if(inner_table[std::to_string(inner_counter+1)].contains(node.get_rvalue1()->get_var_name()))
+                    {
+                        r1_type = inner_table[std::to_string(inner_counter+1)][node.get_rvalue1()->get_var_name()];
                     }
                     else if(table[get_fname_index(current_function_scope)].contains(node.get_rvalue1()->get_var_name()))
                     {
@@ -336,6 +346,12 @@ void SemanticVisitor::visit(ASTAssign& node) {
                 {
                     r2_type = inner_table[std::to_string(inner_counter)][node.get_rvalue2()->get_var_name()];
                 }
+
+                else if(inner_table[std::to_string(inner_counter+1)].contains(node.get_rvalue2()->get_var_name()))
+                {
+                    r2_type = inner_table[std::to_string(inner_counter+1)][node.get_rvalue2()->get_var_name()];
+                }
+
                 else if(table[get_fname_index(current_function_scope)].contains(node.get_rvalue2()->get_var_name()))
                 {
                     r2_type = table[get_fname_index(current_function_scope)][node.get_rvalue2()->get_var_name()].type;

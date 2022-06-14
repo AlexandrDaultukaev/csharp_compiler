@@ -1,4 +1,7 @@
 #include "parser/parser.hpp"
+#include "optimizer/optimizer.hpp"
+#include "semantic/semantic.hpp"
+#include "codegen/codegen.hpp"
 #include <string>
 #include <vector>
 #include <gtest/gtest.h>
@@ -85,4 +88,38 @@ TEST(ParserSuite, ParserCycleTest)
         xf.close();
         std::remove(xml_file.c_str());
     }
+}
+
+std::string exec(const char* cmd) {
+    FILE* pipe = popen(cmd, "r");
+    if (!pipe) return "ERROR";
+    char buffer[128];
+    std::string result = "";
+    while(!feof(pipe)) {
+        if(fgets(buffer, 128, pipe) != NULL)
+            result += buffer;
+    }
+    pclose(pipe);
+    return result;
+}
+
+TEST(CodeGenSuite, ASMTest)
+{
+    const std::string filepath = "../../tests/codegen-tests-cs/test1.cs";
+    std::string fileout = "../../tests/codegen-tests-cs/test1.ll";
+    auto parse_result = cs_lang::parse_test(filepath);
+    VisitorTable visitor;
+    parse_result.m_program->accept(visitor);
+    SemanticVisitor semantic_visitor(visitor.get_table(), visitor.get_fprops(), visitor.get_indexer(), visitor.get_inner_table());
+    parse_result.m_program->accept(semantic_visitor);
+    std::ofstream stream(fileout);
+    CodeGen code_generator(stream, filepath, fileout);
+    parse_result.m_program->accept(code_generator);
+    const char* cmd = "cd ../../tests && chmod +x compile.sh && ./compile.sh";
+    std::string res(exec(cmd));
+    EXPECT_EQ(res, "20\n4.200000\n8\n-12.600000\n4\n1\n84\n52\n0\n0\n1\n2\n3\n4\n14\n0\n2022\n2022\n");
+    stream.close();
+    // std::remove("../../tests/codegen-tests-cs/test1.ll");
+    std::remove("../../tests/codegen-tests-cs/test1.s");
+    std::remove("../../tests/codegen-tests-cs/test1");
 }

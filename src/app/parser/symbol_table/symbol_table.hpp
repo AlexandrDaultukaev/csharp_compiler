@@ -120,5 +120,6 @@ public:
   void visit(ASTForOp &node) override;
   void visit(ASTElse &node) override;
   void visit(ASTPrint &node) override;
+  void visit(ASTRead& node) override;
   void visit(ASTKw &node) {};
 };

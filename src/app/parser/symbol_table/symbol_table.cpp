@@ -89,13 +89,13 @@ void VisitorTable::visit(ASTFunction& node)
         {
             if(!table[get_fname_index(current_function)].contains(node.get_return()->get_return_value()))
             {
-                try {
-                    throw std::runtime_error("ERROR: Undifined variable \'" + node.get_return()->get_return_value() + "\' in return-statement");
-                } catch(std::runtime_error& e)
-                {
-                    std::cerr << e.what() << "\n";
-                    exit(EXIT_FAILURE);
-                }
+                // try {
+                //     throw std::runtime_error("ERROR: Undifined variable \'" + node.get_return()->get_return_value() + "\' in return-statement");
+                // } catch(std::runtime_error& e)
+                // {
+                //     std::cerr << e.what() << "\n";
+                //     exit(EXIT_FAILURE);
+                // }
             } else {
                 p.type = table[get_fname_index(current_function)][node.get_return()->get_return_value()].type;
             }
@@ -122,7 +122,8 @@ void VisitorTable::visit(ASTVariable& node)
         {
             if(node.get_expr_type() == "for")
             {
-                p.fragment_type = "FORVARIABLE"+std::to_string(expr_counter);    
+                p.fragment_type = "FORVARIABLE"+std::to_string(expr_counter);
+                expr_counter++;  
             } else if(node.get_expr_type() == "if") {
                 p.fragment_type = "IFVARIABLE"+std::to_string(expr_counter);
             } else if(node.get_expr_type() == "else") {
@@ -136,17 +137,21 @@ void VisitorTable::visit(ASTVariable& node)
         // std::cout << node.get_var_name() << "::" << node.get_frag() << "::" << node.get_var_type() << current_function << "::" << node.get_expr_type() << "\n";
         if(table[get_fname_index(current_function)].contains(node.get_var_name()) && node.get_frag() == "LEFT_ASSIGN" && node.get_var_type() != "")
         {
-            auto existing_symbol_type = table[get_fname_index(current_function)][node.get_var_name()].fragment_type;
-            if(existing_symbol_type == p.fragment_type || p.fragment_type == "VARIABLE" || existing_symbol_type == "VARIABLE")
+            if(p.fragment_type.find("FOR") != std::string::npos && table[get_fname_index(current_function)][node.get_var_name()].fragment_type == p.fragment_type)
             {
-                try {
-                    throw std::runtime_error("ERROR: Redefinition variable \'" + node.get_var_name() + "\'");
-                } catch(std::runtime_error& e)
+                auto existing_symbol_type = table[get_fname_index(current_function)][node.get_var_name()].fragment_type;
+                if(existing_symbol_type == p.fragment_type || p.fragment_type == "VARIABLE" || existing_symbol_type == "VARIABLE")
                 {
-                    std::cerr << e.what() << "\n";
-                    exit(EXIT_FAILURE);
+                    try {
+                        throw std::runtime_error("ERROR: Redefinition variable \'" + node.get_var_name() + "\'");
+                    } catch(std::runtime_error& e)
+                    {
+                        std::cerr << e.what() << "\n";
+                        exit(EXIT_FAILURE);
+                    }
                 }
             }
+            
         }
         if(current_scope != "")
         {
@@ -169,22 +174,26 @@ void VisitorTable::visit(ASTVariable& node)
         }
 
         //UNDEFINED VARIABLE ERROR
-        
+
         if(!table[get_fname_index(current_function)].contains(node.get_var_name()) && node.get_var_type() == "" && !inner_table[std::to_string(inner_counter)].contains(node.get_var_name()))
         {
-            //CHECK IF VARIABLE EXSITS IN GLOBAL SCOPE
-            if(table[0].contains(node.get_var_name()))
+            if((p.fragment_type.find("FOR") == std::string::npos || !inner_table[std::to_string(inner_counter+1)].contains(node.get_var_name())) && node.get_var_type() == "")
             {
-                node.set_var_type(table[0][node.get_var_name()].type);
-            } else {
-                try {
-                    throw std::runtime_error("ERROR: Undefined variable \'" + node.get_var_name() + "\'");
-                } catch(std::runtime_error& e)
+                //CHECK IF VARIABLE EXSITS IN GLOBAL SCOPE
+                if(table[0].contains(node.get_var_name()))
                 {
-                    std::cerr << e.what() << "\n";
-                    exit(EXIT_FAILURE);
+                    node.set_var_type(table[0][node.get_var_name()].type);
+                } else {
+                    try {
+                        throw std::runtime_error("ERROR: Undefined variable \'" + node.get_var_name() + "\'");
+                    } catch(std::runtime_error& e)
+                    {
+                        std::cerr << e.what() << "\n";
+                        exit(EXIT_FAILURE);
+                    }
                 }
             }
+
         }
     }
     else if(node.get_ctx_type() == "PARS")
@@ -218,6 +227,7 @@ void VisitorTable::visit(ASTVariable& node)
         {
             p.type = table[0][node.get_var_name()].type;
         } else {
+            if(func_scope < 2 && p.fragment_type.find("FOR") == std::string::npos)
                 try {
                     throw std::runtime_error("ERROR: Undefinefd variable \'" + node.get_var_name() + "\'");
                 } catch(std::runtime_error& e)
@@ -242,7 +252,7 @@ void VisitorTable::visit(ASTVariable& node)
    // } //else if(p.fragment_type == "PVARIABLE") {
     //     key = key + "_" + node.get_func_name();
     // }
-    if(current_scope == "")
+    if(current_scope == "" && p.fragment_type.find("FOR") == std::string::npos && func_scope < 3)
     {
         table[get_fname_index(current_function)][key] = p;
     } else {
@@ -251,9 +261,12 @@ void VisitorTable::visit(ASTVariable& node)
         {
             if(inner_table[std::to_string(inner_counter)].contains(node.get_var_name()))
             {
-                
                 type_in_var = inner_table[std::to_string(inner_counter)][node.get_var_name()];
-            } else if(table[get_fname_index(current_function)].contains(node.get_var_name()))
+            }else if(inner_table[std::to_string(inner_counter+1)].contains(node.get_var_name()) && (p.fragment_type.find("FOR") != std::string::npos || func_scope == 2))
+            {
+                type_in_var = inner_table[std::to_string(inner_counter+1)].contains(node.get_var_name());
+            } 
+            else if(table[get_fname_index(current_function)].contains(node.get_var_name()))
             {
                 
                 type_in_var = table[get_fname_index(current_function)][node.get_var_name()].type;
@@ -349,7 +362,6 @@ void VisitorTable::visit(ASTScope& node)
 void VisitorTable::visit(ASTElse &node) {
     incr_level();
     std::size_t cs = inner_counter+1;
-    std::cout << "ELSE:\n";
     node.get_scope()->accept(*this);
     if(pit)
         print_inner_table(std::to_string(cs));
@@ -483,7 +495,6 @@ void VisitorTable::visit(ASTIf& node)
     }
     incr_level();
     std::size_t cs = inner_counter+1;
-    std::cout << "IF:\n";
     node.get_scope()->accept(*this);
     if(pit)
         print_inner_table(std::to_string(cs));
@@ -511,12 +522,15 @@ void VisitorTable::visit(ASTFor& node)
 
     if(node.get_op() != nullptr)
     {
+        // if(node.get_op()->get_assign() != nullptr)
+        // {
+        //     node.get_op()->get_assign()->get_lvalue()->set_expr_type("for");
+        // }
+        
         node.get_op()->accept(*this);
     }
-
     incr_level();
     std::size_t cs = inner_counter+1;
-    std::cout << "FOR:\n";
     node.get_scope()->accept(*this);
     if(pit)
         print_inner_table(std::to_string(cs));
@@ -643,6 +657,20 @@ void VisitorTable::visit(ASTForOp& node)
 }
 
 void VisitorTable::visit(ASTPrint& node)
+{
+    if(!table[get_fname_index(current_function)].contains(node.get_name()) && !table[0].contains(node.get_name())&& !inner_table[std::to_string(inner_counter)].contains(node.get_name()))
+    {
+        try {
+            throw std::runtime_error("ERROR: Undefined variable \'" + node.get_name() + "\' in line: " + std::to_string(node.get_line()) + "\n");
+        } catch(std::runtime_error& e)
+        {
+            std::cerr << e.what() << "\n";
+            exit(EXIT_FAILURE);
+        }
+    }
+}
+
+void VisitorTable::visit(ASTRead& node)
 {
     if(!table[get_fname_index(current_function)].contains(node.get_name()) && !table[0].contains(node.get_name())&& !inner_table[std::to_string(inner_counter)].contains(node.get_name()))
     {

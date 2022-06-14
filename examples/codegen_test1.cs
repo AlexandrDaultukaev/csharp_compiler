@@ -15,7 +15,7 @@ int main()
         float integ = 21.0;
         WriteLine(integ);
     }
-    integ = integ + 2.1;
+    
     
     
 

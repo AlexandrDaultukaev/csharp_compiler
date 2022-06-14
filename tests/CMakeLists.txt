@@ -21,9 +21,11 @@ target_link_libraries(
   tests
     antlr4_cpp_runtime
     parserlib
+    semanticlib
+    optimizerlib
+    codegen
     gram
-    gtest_main
-    
+    gtest_main   
 )
 
 include(GoogleTest)

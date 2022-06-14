@@ -22,6 +22,7 @@ class ASTForCond;
 class ASTKw;
 class ASTElse;
 class ASTPrint;
+class ASTRead;
 
 class Visitor : public CsharpVisitor {
 public:
@@ -59,6 +60,7 @@ public:
   antlrcpp::Any visitPars(CsharpParser::ParsContext *context) override;
   antlrcpp::Any visitPrint_statement(CsharpParser::Print_statementContext *context) override;
   antlrcpp::Any visitElse_statement(CsharpParser::Else_statementContext *context) override;
+  antlrcpp::Any visitRead_statement(CsharpParser::Read_statementContext *context) override;
   // antlrcpp::Any visitArgs(CsharpParser::ArgsContext *context) override;
 
   virtual void visit(ASTProgram &node) = 0;
@@ -76,6 +78,7 @@ public:
   virtual void visit(ASTKw &node) = 0;
   virtual void visit(ASTElse &node) = 0;
   virtual void visit(ASTPrint &node) = 0;
+  virtual void visit(ASTRead &node) = 0;
 };
 
 class ASTNode {
@@ -279,7 +282,19 @@ public:
   }
 };
 
+class ASTRead : public ASTNode {
+  std::string type = "";
+  std::string name = "";
 
+public:
+  ASTRead()=default;
+  std::string get_type() { return type; }
+  std::string get_name() { return name; }
+  void set_type(std::string t) { type = t; }
+  void set_name(std::string n) { name = n; }
+  void accept(Visitor &visitor) override;
+  ~ASTRead()=default;
+};
 
 
 // i < 10
@@ -530,6 +545,7 @@ public:
   void visit(ASTKw &node) override;
   void visit(ASTElse &node) override;
   void visit(ASTPrint &node) override;
+  void visit(ASTRead &node) override;
 };
 
 class VisitorTraverse : public Visitor {
@@ -559,4 +575,5 @@ public:
   void visit(ASTKw &node) override;
   void visit(ASTElse &node) override;
   void visit(ASTPrint &node) override;
+  void visit(ASTRead &node) override;
 };

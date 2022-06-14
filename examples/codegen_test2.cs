@@ -1,18 +1,7 @@
-
-void func2(float f)
+float main()
 {
-    int j = 1515;
-}
-
-void printi(int i)
-{
-
-    WriteLine(i);
-}
-
-float main(int i)
-{
-    int j = 124;
-    printi(14);
+    int j;
+    ReadLine(j);
+    WriteLine(j);
     return 0.0;
 }

@@ -9,5 +9,5 @@ int main()
         WriteLine(b);
     }
     int a = 10;
-    
+    return 0;
 }

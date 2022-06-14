@@ -121,6 +121,11 @@ void OptimizerVisitor::visit(ASTPrint &node)
     set_used_var(node.get_name());
 }
 
+void OptimizerVisitor::visit(ASTRead &node)
+{
+    set_used_var(node.get_name());
+}
+
 void OptimizerVisitor::visit(ASTFuncCall &node)
 {
     

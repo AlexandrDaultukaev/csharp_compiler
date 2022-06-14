@@ -1,30 +1,5 @@
 	.text
 	.file	"codegen_test2.cs"
-	.globl	printi                          # -- Begin function printi
-	.p2align	4, 0x90
-	.type	printi,@function
-printi:                                 # @printi
-	.cfi_startproc
-# %bb.0:
-	pushq	%rbp
-	.cfi_def_cfa_offset 16
-	.cfi_offset %rbp, -16
-	movq	%rsp, %rbp
-	.cfi_def_cfa_register %rbp
-	subq	$16, %rsp
-	movl	%edi, -4(%rbp)
-	movl	-4(%rbp), %esi
-	movabsq	$.L.str, %rdi
-	movb	$0, %al
-	callq	printf@PLT
-	addq	$16, %rsp
-	popq	%rbp
-	.cfi_def_cfa %rsp, 8
-	retq
-.Lfunc_end0:
-	.size	printi, .Lfunc_end0-printi
-	.cfi_endproc
-                                        # -- End function
 	.globl	main                            # -- Begin function main
 	.p2align	4, 0x90
 	.type	main,@function
@@ -37,16 +12,21 @@ main:                                   # @main
 	movq	%rsp, %rbp
 	.cfi_def_cfa_register %rbp
 	subq	$16, %rsp
-	movl	%edi, -4(%rbp)
-	movl	$14, %edi
-	callq	printi
+	movabsq	$.L.str.4, %rdi
+	leaq	-4(%rbp), %rsi
+	movb	$0, %al
+	callq	scanf@PLT
+	movl	-4(%rbp), %esi
+	movabsq	$.L.str, %rdi
+	movb	$0, %al
+	callq	printf@PLT
 	xorps	%xmm0, %xmm0
 	addq	$16, %rsp
 	popq	%rbp
 	.cfi_def_cfa %rsp, 8
 	retq
-.Lfunc_end1:
-	.size	main, .Lfunc_end1-main
+.Lfunc_end0:
+	.size	main, .Lfunc_end0-main
 	.cfi_endproc
                                         # -- End function
 	.type	.L.str,@object                  # @.str
@@ -69,5 +49,25 @@ main:                                   # @main
 .L.str.3:
 	.asciz	"%s\n"
 	.size	.L.str.3, 4
+
+	.type	.L.str.4,@object                # @.str.4
+.L.str.4:
+	.asciz	"%d"
+	.size	.L.str.4, 3
+
+	.type	.L.str.5,@object                # @.str.5
+.L.str.5:
+	.asciz	"%c"
+	.size	.L.str.5, 3
+
+	.type	.L.str.6,@object                # @.str.6
+.L.str.6:
+	.asciz	"%f"
+	.size	.L.str.6, 3
+
+	.type	.L.str.7,@object                # @.str.7
+.L.str.7:
+	.asciz	"%s"
+	.size	.L.str.7, 3
 
 	.section	".note.GNU-stack","",@progbits

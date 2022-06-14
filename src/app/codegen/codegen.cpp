@@ -28,6 +28,7 @@
 // @.str = private unnamed_addr constant [4 x i8] c"%f\0A\00", align 1
 
 std::size_t print_counter = 0;
+std::size_t scanf_counter = 0;
 std::string current_function = "Global";
 std::size_t index = 0;
 // ID = <%INDEX, TYPE>
@@ -59,6 +60,23 @@ std::string new_global_index()
     index++;
     return tmp;
 }
+
+std::string get_llvm_type_from_literal(std::string p)
+{
+    auto ptype = "";
+    if(std::isdigit(p[0]) && p.find('.')==std::string::npos)
+    {
+        ptype = "i32";
+    } else if(p[0] == '\'')
+    {
+        ptype = "i8";
+    } else if(std::isdigit(p[0]) && p.find('.')!=std::string::npos)
+    {
+        ptype = "double";
+    }
+    return ptype;
+}
+
 
 std::string get_llvm_type(std::string p)
 {
@@ -131,7 +149,6 @@ std::string get_log_op_int(std::string op)
     std::string lo = "";
     if(op == ">")
     {
-        std::cout << "sgt\n";
         lo = "sgt";
     } else if(op == ">=") {
         lo = "sge";
@@ -178,6 +195,11 @@ void CodeGen::visit(ASTProgram &node)
     stream << "@.str.1 = private unnamed_addr constant [4 x i8] c\"%c\\0A\\00\", align 1\n";
     stream << "@.str.2 = private unnamed_addr constant [4 x i8] c\"%f\\0A\\00\", align 1\n";
     stream << "@.str.3 = private unnamed_addr constant [4 x i8] c\"%s\\0A\\00\", align 1\n";
+
+    stream << "@.str.4 = private unnamed_addr constant [3 x i8] c\"%d\\00\", align 1\n";
+    stream << "@.str.5 = private unnamed_addr constant [3 x i8] c\"%c\\00\", align 1\n";
+    stream << "@.str.6 = private unnamed_addr constant [3 x i8] c\"%f\\00\", align 1\n";
+    stream << "@.str.7 = private unnamed_addr constant [3 x i8] c\"%s\\00\", align 1\n";
     for(auto& child : node.get_children())
     {
         child->accept(*this);
@@ -193,6 +215,10 @@ void CodeGen::visit(ASTProgram &node)
     if(print_counter > 0)
     {
         stream << "declare i32 @printf(i8* noundef, ...) #1\n";
+    }
+    if(scanf_counter > 0)
+    {
+        stream << "declare i32 @scanf(i8* noundef, ...) #1\n";
     }
     stream << "attributes #0 = { noinline nounwind optnone uwtable \"frame-pointer\"=\"all\" \"min-legal-vector-width\"=\"0\" \"no-trapping-math\"=\"true\" \"stack-protector-buffer-size\"=\"8\" \"target-cpu\"=\"x86-64\" \"target-features\"=\"+cx8,+fxsr,+mmx,+sse,+sse2,+x87\" \"tune-cpu\"=\"generic\" }\n";
     stream << "attributes #1 = { \"frame-pointer\"=\"all\" \"no-trapping-math\"=\"true\" \"stack-protector-buffer-size\"=\"8\" \"target-cpu\"=\"x86-64\" \"target-features\"=\"+cx8,+fxsr,+mmx,+sse,+sse2,+x87\" \"tune-cpu\"=\"generic\" }\n";
@@ -241,8 +267,7 @@ void CodeGen::visit(ASTFunction &node)
 //SCOPE
     node.get_scope()->accept(*this);
 // RETURN
-    std::string tmp_return = "%"+std::to_string(index);
-    index++;
+    std::string tmp_return = new_index();
     
     
     std::string ret_type;
@@ -559,7 +584,7 @@ void CodeGen::visit(ASTAssign &node)
                 {
                     r1_ind = name_index_scope[node.get_rvalue1()->get_var_name()].first;
                 } else {
-                    r1_ind   = name_index[node.get_lvalue()->get_var_name()].first;
+                    r1_ind   = name_index[node.get_rvalue1()->get_var_name()].first;
                 }
                 if(name_index_scope.contains(node.get_lvalue()->get_var_name()))
                 {
@@ -573,8 +598,64 @@ void CodeGen::visit(ASTAssign &node)
                 stream << tmp_ind << " = load " << l_type << ", " << l_type << "* " << r1_ind << "\n";
                 stream << "store " << l_type << " " << tmp_ind << ", " << l_type << "* " << l_ind << "\n"; 
             }
+        }else if(node.get_funccall() != nullptr)
+        {
+            std::string l_ind = "";
+            std::string l_type = "";
+            if(name_index_scope.contains(node.get_lvalue()->get_var_name()))
+            {
+                l_ind = name_index_scope[node.get_lvalue()->get_var_name()].first;
+                l_type = name_index_scope[node.get_lvalue()->get_var_name()].second;
+            } else {
+                l_ind   = name_index[node.get_lvalue()->get_var_name()].first;
+                l_type  = name_index[node.get_lvalue()->get_var_name()].second;
+            }
+            auto args = node.get_funccall()->get_args();
+            auto name = node.get_funccall()->func_name();
+            auto ret_type = get_llvm_type(funcs_props[name]);
+            std::string ind = "";
+            std::string tmp_ind = "";
+            std::string type = "";
+            std::string res = "";
+            std::vector<std::pair<std::string, std::string>> tmp_args;
+            for(std::size_t i = 0; i < args.size(); i++)
+            {
+                if(name_index_scope.contains(args[i]->get_arg()))
+                {
+                    ind = name_index_scope[args[i]->get_arg()].first;
+                } else {
+                    ind = name_index[args[i]->get_arg()].first;
+                }
+                if(args[i]->is_literal())
+                {
+                    type = get_llvm_type_from_literal(args[i]->get_arg());
+                } else {
+                    if(name_index_scope.contains(args[i]->get_arg()))
+                    {
+                        type = name_index_scope[args[i]->get_arg()].second;
+                    } else {
+                        type = name_index[args[i]->get_arg()].second;
+                    }
+                }
+                tmp_ind = new_index();
+                stream << tmp_ind << " = load " << type << ", " << type << "* " << ind << "\n"; 
+                tmp_args.push_back(std::make_pair(tmp_ind, type));
+            }
+            res = new_index();
+            stream << res << " = ";
+            stream << "call " << ret_type << " @" << name << "(";
+            for(std::size_t i = 0; i < args.size(); i++)
+            {
+                stream << tmp_args[i].second << " noundef " << tmp_args[i].first;
+                if(i+1 < args.size())
+                {
+                    stream << ", ";
+                }
+            }
+            stream << ")\n";
+            stream << "store " << l_type << " " << res << ", " << l_type << "* " << l_ind << "\n";
         }
-    }
+    } 
     
 }
 
@@ -624,6 +705,40 @@ void CodeGen::visit(ASTPrint &node)
     }
     std::string call_index = new_index();
     stream << call_index << " = call i32 (i8*, ...) @printf(i8* noundef getelementptr inbounds ([4 x i8], [4 x i8]* " << str << ", i64 0, i64 0), " << tmp_ind2_type << " noundef " << tmp_ind2 << ")\n"; 
+}
+
+void CodeGen::visit(ASTRead &node)
+{
+    scanf_counter++;
+    // std::string tmp_ind = new_index();
+    std::string tmp_ind2 = "";
+    std::string tmp_ind2_type = "i32";
+    std::string str = "@.str.4";
+    std::string name_type = "";
+    std::string name_ind = "";
+    if(name_index_scope.contains(node.get_name()))
+    {
+        name_type = name_index_scope[node.get_name()].second;
+        name_ind  = name_index_scope[node.get_name()].first;
+    } else {
+        name_type   = name_index[node.get_name()].second;
+        name_ind    = name_index[node.get_name()].first;
+    }
+    if(name_type == "double")
+    {
+        tmp_ind2_type = "double"; 
+        str = "@.str.6";
+    } else if(name_type[0] == '[')
+    {
+        tmp_ind2 = new_index();
+        std::string string_type = name_type;
+        stream << tmp_ind2 << " = getelementptr inbounds " << string_type << ", " << string_type << "* " << name_ind << ", i64 0, i64 0\n";
+        str = "@.str.7";
+        tmp_ind2_type = "i8*";
+    }
+
+    std::string call_index = new_index();
+    stream << call_index << " = call i32 (i8*, ...) @scanf(i8* noundef getelementptr inbounds ([3 x i8], [3 x i8]* " << str << ", i64 0, i64 0), " << tmp_ind2_type << "* noundef " << name_ind << ")\n"; 
 }
 
 void CodeGen::visit(ASTElse &node)
@@ -818,13 +933,41 @@ void CodeGen::visit(ASTFor &node)
 
 void CodeGen::visit(ASTFuncCall &node)
 {
-    auto args = node.get_args_from_vector();
+    auto args = node.get_args();
     auto name = node.func_name();
-    auto ret_type = funcs_props[name];
+    auto ret_type = get_llvm_type(funcs_props[name]);
+    std::string ind = "";
+    std::string tmp_ind = "";
+    std::string type = "";
+    std::vector<std::pair<std::string, std::string>> tmp_args;
+    for(std::size_t i = 0; i < args.size(); i++)
+    {
+        if(name_index_scope.contains(args[i]->get_arg()))
+        {
+            ind = name_index_scope[args[i]->get_arg()].first;
+        } else {
+            ind = name_index[args[i]->get_arg()].first;
+        }
+        if(args[i]->is_literal())
+        {
+            type = get_llvm_type_from_literal(args[i]->get_arg());
+        } else {
+            if(name_index_scope.contains(args[i]->get_arg()))
+            {
+                type = name_index_scope[args[i]->get_arg()].second;
+            } else {
+                type = name_index[args[i]->get_arg()].second;
+            }
+        }
+        tmp_ind = new_index();
+        stream << tmp_ind << " = load " << type << ", " << type << "* " << ind << "\n"; 
+        tmp_args.push_back(std::make_pair(tmp_ind, type));
+    }
+
     stream << "call " << ret_type << " @" << name << "(";
     for(std::size_t i = 0; i < args.size(); i++)
     {
-        stream << get_llvm_type(args[i].second) << " noundef " << args[i].first;
+        stream << tmp_args[i].second << " noundef " << tmp_args[i].first;
         if(i+1 < args.size())
         {
             stream << ", ";
