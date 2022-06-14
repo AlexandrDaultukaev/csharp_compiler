@@ -32,11 +32,28 @@ std::string current_function = "Global";
 std::size_t index = 0;
 // ID = <%INDEX, TYPE>
 std::map<std::string, std::pair<std::string, std::string>> name_index;
+std::map<std::string, std::pair<std::string, std::string>> name_index_globals;
+std::map<std::string, std::pair<std::string, std::string>> name_index_params;
+std::map<std::string, std::pair<std::string, std::string>> name_index_scope;
+std::map<std::string, std::pair<std::string, std::string>> name_index_scope_new;
 std::map<std::string, std::string> global_strs;
+bool is_inner_scope = false;
 
 std::string new_index()
 {
-    std::string tmp = "%v"+std::to_string(index);
+    std::string tmp = "";
+    if(current_function == "Global")
+    {
+        tmp = "@g"+std::to_string(index);
+    } else {
+        tmp = "%v"+std::to_string(index);
+    }
+    index++;
+    return tmp;
+}
+std::string new_global_index()
+{
+    std::string tmp = "@g"+std::to_string(index);
     index++;
     return tmp;
 }
@@ -50,7 +67,7 @@ std::string get_llvm_type(std::string p)
     } else if(p == "char" || p == "CHAR")
     {
         ptype = "i8";
-    } else if(p == "float" || p == "FLOAT_NUMBER")
+    } else if(p == "float" || p == "FLOAT_NUMBER" || p == "FLOAT")
     {
         ptype = "double";
     }
@@ -62,7 +79,7 @@ std::string get_llvm_op(std::string op, std::string type)
     auto ret_op = "";
     if(op == "+")
     {
-        if(type == "int")
+        if(type == "int" || type == "i32")
         {
             ret_op = "add";
         }
@@ -73,7 +90,7 @@ std::string get_llvm_op(std::string op, std::string type)
         
     } else if(op == "-")
     {
-        if(type == "int")
+        if(type == "int" || type == "i32")
         {
             ret_op = "sub";
         }
@@ -83,7 +100,7 @@ std::string get_llvm_op(std::string op, std::string type)
         }
     } else if(op == "/")
     {
-        if(type == "int")
+        if(type == "int" || type == "i32")
         {
             ret_op = "sdiv";
         }
@@ -180,24 +197,41 @@ void CodeGen::visit(ASTProgram &node)
 
 void CodeGen::visit(ASTFunction &node)
 {
+    name_index.clear();
+    name_index_params.clear();
+    name_index = name_index_globals;
     current_function = node.func_name();
-    stream << "define dso_local i32 @" << node.func_name();
+    stream << "define dso_local " << get_llvm_type(node.return_type()) << " @" << node.func_name();
 //PARAMS
     stream << "(";
+    std::size_t i = 0;
     for(auto& p : node.get_param_from_vector())
     {
+        
         auto ptype = get_llvm_type(p.second);
-        stream << ptype << " noundef %" << index;
-        name_index[p.first] = std::make_pair("%"+index, ptype);
-        index++;
-        if(index < node.get_param_from_vector().size()-1)
+        
+        name_index[p.first] = std::make_pair(new_index(), ptype);
+        stream << ptype << " noundef " << name_index[p.first].first;
+        name_index_params[p.first] = std::make_pair(new_index(), ptype);
+        if(i < node.get_param_from_vector().size()-1)
         {
             stream << ", ";
         }
+        i++;
     }
-    index++;
+
     stream << ") ";
     stream << "#0 {\n";
+
+    for(auto& item : name_index_params)
+    {
+        auto ind = new_index();
+        auto old_ind = name_index[item.first].first;
+        name_index[item.first].first = ind; 
+        stream << ind << " = alloca " << name_index[item.first].second << "\n";
+        stream << "store " << name_index[item.first].second <<" "<< old_ind << ", " << name_index[item.first].second << "* " << ind << "\n";
+    }
+
 //SCOPE
     node.get_scope()->accept(*this);
 // RETURN
@@ -206,26 +240,31 @@ void CodeGen::visit(ASTFunction &node)
     
     
     std::string ret_type;
-    
-    if(!name_index.contains(node.get_return()->get_return_value()))
-    {
-        
-        
-        ret_type = node.get_return()->get_return_type();
-        ret_type = get_llvm_type(ret_type);
-        stream << "ret ";
-        stream << ret_type << " " << node.get_return()->get_return_value() << '\n';
-    } else {
-        ret_type = name_index[node.get_return()->get_return_value()].second;
-        auto ind = name_index[node.get_return()->get_return_value()].first;
-        stream << tmp_return << " = load " << ret_type << ", " << ret_type << "* " << ind << "\n";
-        
-        stream << "ret ";
-        
-        stream << ret_type << " " << tmp_return << '\n';
+
+    if(node.get_return() != nullptr){
+        if(!name_index.contains(node.get_return()->get_return_value()))
+            {
+                std::cout << "WAG2:" << node.get_return()->get_return_type() << '\n';
+                ret_type = node.get_return()->get_return_type();
+
+                ret_type = get_llvm_type(ret_type);
+
+                stream << "ret ";
+                stream << ret_type << " " << node.get_return()->get_return_value() << '\n';
+            } else {
+                std::cout << "WAG:" << node.get_return()->get_return_type() << '\n';
+                ret_type = name_index[node.get_return()->get_return_value()].second;
+
+                auto ind = name_index[node.get_return()->get_return_value()].first;
+
+                stream << tmp_return << " = load " << ret_type << ", " << ret_type << "* " << ind << "\n";
+                
+                stream << "ret ";
+                
+                stream << ret_type << " " << tmp_return << '\n';
+            }
     }
-    
-    
+
     stream << "}\n";
 }
 
@@ -267,7 +306,31 @@ void CodeGen::visit(ASTAssign &node)
             stream << "call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 1 " << bitcast_ind << ", i8* align 1 getelementptr inbounds (" << type << ", " << type << "* " << "@__const." << current_function << "." << node.get_lvalue()->get_var_name() << ", i32 0, i32 0), i64 " << std::to_string(node.get_rvalue1()->get_var_name().size()-1) << ", i1 false)\n";
         } else {
             type = get_llvm_type(node.get_lvalue()->get_var_type());
-            stream << ind << " = alloca " << type << "\n";
+            if(current_function == "Global")
+            {
+                stream << ind << " = global " << type;
+                if(node.get_rvalue1() == nullptr)
+                {   
+                    if(type == "double" || type == "float")
+                    {
+                        stream << " 0.000000\n";
+                    } else if(type == "int" || type == "i32" || type == "char" || type == "i8") {
+                        stream << " 0\n";
+                    } else if(type == "string" || type[0] == '[')
+                    {
+                        stream << " zeroinitializer\n";
+                    }
+                } else {
+                    stream << " " << node.get_rvalue1()->get_var_name() << "\n";
+                }
+                
+            } else {
+                stream << ind << " = alloca " << type << "\n";
+            }
+            if(current_function == "Global")
+            {
+                name_index_globals[node.get_lvalue()->get_var_name()] = std::make_pair(ind, type);
+            }
             name_index[node.get_lvalue()->get_var_name()] = std::make_pair(ind, type);
         }
     } else {
@@ -277,124 +340,129 @@ void CodeGen::visit(ASTAssign &node)
             throw;
         }
     }
-    if(node.get_rvalue1() != nullptr && node.get_rvalue2() != nullptr)
+    if(current_function != "Global")
     {
-        std::string type = get_llvm_type(node.get_rvalue1()->get_var_type());
-        std::string op   = node.get_oper();
-        float resf = 0.0f;
-        int resi = 0;
-        if(node.get_rvalue1()->is_literal() && node.get_rvalue2()->is_literal())
+        if(node.get_rvalue1() != nullptr && node.get_rvalue2() != nullptr)
         {
-            if(type == "double")
+            std::string type = get_llvm_type(node.get_rvalue1()->get_var_type());
+            std::string op   = node.get_oper();
+            float resf = 0.0f;
+            int resi = 0;
+            if(node.get_rvalue1()->is_literal() && node.get_rvalue2()->is_literal())
             {
-                float r1 = std::stof(node.get_rvalue1()->get_var_name());
-                float r2 = std::stof(node.get_rvalue2()->get_var_name());
-                if(op == "+") { resf = r1 + r2; } 
-                else if(op == "-") { resf = r1 - r2; }
-                else if(op == "/")
+                if(type == "double")
                 {
-                    if(r2 == 0.0f)
+                    float r1 = std::stof(node.get_rvalue1()->get_var_name());
+                    float r2 = std::stof(node.get_rvalue2()->get_var_name());
+                    if(op == "+") { resf = r1 + r2; } 
+                    else if(op == "-") { resf = r1 - r2; }
+                    else if(op == "/")
                     {
-                        std::cerr << "ERROR: Divide by zero\n";
-                        throw;
-                    }
-                    resf = r1 / r2;
-                } else if(op == "%") { std::cerr << "ERROR: invalid operands to binary expression\n"; throw; }
-            } else if(type == "i32")
-            {
-                int r1 = std::stoi(node.get_rvalue1()->get_var_name());
-                int r2 = std::stoi(node.get_rvalue2()->get_var_name());
-                if(op == "+") { resi = r1 + r2; } 
-                else if(op == "-") { resi = r1 - r2; }
-                else if(op == "/")
+                        if(r2 == 0.0f)
+                        {
+                            std::cerr << "ERROR: Divide by zero\n";
+                            throw;
+                        }
+                        resf = r1 / r2;
+                    } else if(op == "%") { std::cerr << "ERROR: invalid operands to binary expression\n"; throw; }
+                } else if(type == "i32")
                 {
-                    if(r2 == 0.0f)
+                    int r1 = std::stoi(node.get_rvalue1()->get_var_name());
+                    int r2 = std::stoi(node.get_rvalue2()->get_var_name());
+                    if(op == "+") { resi = r1 + r2; } 
+                    else if(op == "-") { resi = r1 - r2; }
+                    else if(op == "/")
                     {
-                        std::cerr << "ERROR: Divide by zero\n";
-                        throw;
-                    }
-                    resi = r1 / r2;
-                } else if(op == "%") { resi = r1 % r2; }
-            }
+                        if(r2 == 0.0f)
+                        {
+                            std::cerr << "ERROR: Divide by zero\n";
+                            throw;
+                        }
+                        resi = r1 / r2;
+                    } else if(op == "%") { resi = r1 % r2; }
+                }
 
-            stream << "store " << type << " ";
-            if(type == "i32")
-            {
-                stream << resi << ", ";
-            } else if(type == "double")
-            {
-                stream << resf << ", ";
+                stream << "store " << type << " ";
+                if(type == "i32")
+                {
+                    stream << resi << ", ";
+                } else if(type == "double")
+                {
+                    stream << resf << ", ";
+                }
+                stream << type << "* " << name_index[node.get_lvalue()->get_var_name()].first << "\n";
             }
-            stream << type << "* " << name_index[node.get_lvalue()->get_var_name()].first << "\n";
-        }
-        if(node.get_rvalue1()->is_literal() && !node.get_rvalue2()->is_literal())
-        {
-            std::string tmp_ind_b   = new_index();
-            std::string tmp_literal = new_index();
-            
-            std::string r1_literal  = node.get_rvalue1()->get_var_name();
-            std::string r2_type     = name_index[node.get_rvalue2()->get_var_name()].second;
-            std::string op          = get_llvm_op(node.get_oper(), r2_type);
-            std::string r2_ind      = name_index[node.get_rvalue2()->get_var_name()].first;
-            std::string l_ind       = name_index[node.get_lvalue()->get_var_name()].first;
-            stream << tmp_ind_b << " = load " << r2_type << ", " << r2_type << "* " << r2_ind << "\n";
-            stream << tmp_literal << " = " << op << " " << r2_type << " " << r1_literal << ", " << tmp_ind_b << "\n";
-            stream << "store " << r2_type << " " << tmp_literal << ", " << r2_type << "* " << l_ind << "\n";
-        }
-        if(!node.get_rvalue1()->is_literal() && node.get_rvalue2()->is_literal())
-        {
-            std::string tmp_ind_b   = new_index();
-            std::string tmp_literal = new_index();
-            
-            std::string r2_literal  = node.get_rvalue2()->get_var_name();
-            std::string r1_type     = name_index[node.get_rvalue1()->get_var_name()].second;
-            std::string op          = get_llvm_op(node.get_oper(), r1_type);
-            std::string r1_ind      = name_index[node.get_rvalue1()->get_var_name()].first;
-            std::string l_ind       = name_index[node.get_lvalue()->get_var_name()].first;
-            stream << tmp_ind_b << " = load " << r1_type << ", " << r1_type << "* " << r1_ind << "\n";
-            stream << tmp_literal << " = " << op << " " << r1_type << " " << tmp_ind_b << ", " << r2_literal << "\n";
-            stream << "store " << r1_type << " " << tmp_literal << ", " << r1_type << "* " << l_ind << "\n";
-        }
-        if(!node.get_rvalue1()->is_literal() && !node.get_rvalue2()->is_literal())
-        {
-            std::string tmp_ind_r1 = new_index();
-            std::string tmp_ind_r2 = new_index();
-            std::string res_r1_r2  = new_index();
-            
-            std::string r1_type    = name_index[node.get_rvalue1()->get_var_name()].second;
-            std::string r2_type    = name_index[node.get_rvalue2()->get_var_name()].second;
-            std::string op         = get_llvm_op(node.get_oper(), r2_type);
-            std::string r1_ind     = name_index[node.get_rvalue1()->get_var_name()].first;
-            std::string r2_ind     = name_index[node.get_rvalue2()->get_var_name()].first;
-            std::string l_ind      = name_index[node.get_lvalue()->get_var_name()].first;
-            stream << tmp_ind_r1 << " = load " << r1_type << ", " << r1_type << "* " << r1_ind << "\n";
-            stream << tmp_ind_r2 << " = load " << r2_type << ", " << r2_type << "* " << r2_ind << "\n";
-            stream << res_r1_r2  << " = " << op << " " << r1_type << " " << tmp_ind_r1 << ", " << tmp_ind_r2 << "\n";
-            stream << "store " << r1_type << " " << res_r1_r2 << ", " << r1_type << "* " << l_ind << "\n";
-        }
-    } else if(node.get_rvalue1() != nullptr)
-    {
-        if(node.get_rvalue1()->is_literal() && node.get_lvalue()->get_var_type()!="string")
-        {
-            std::string literal = node.get_rvalue1()->get_var_name();
-            if(literal[0] == '\'')
+            if(node.get_rvalue1()->is_literal() && !node.get_rvalue2()->is_literal())
             {
-                literal = std::to_string(static_cast<int>(literal[1]));
+                std::string tmp_ind_b   = new_index();
+                std::string tmp_literal = new_index();
+                
+                std::string r1_literal  = node.get_rvalue1()->get_var_name();
+                std::string r2_type     = name_index[node.get_rvalue2()->get_var_name()].second;
+                std::string op          = get_llvm_op(node.get_oper(), r2_type);
+                
+                std::string r2_ind      = name_index[node.get_rvalue2()->get_var_name()].first;
+                std::string l_ind       = name_index[node.get_lvalue()->get_var_name()].first;
+                stream << tmp_ind_b << " = load " << r2_type << ", " << r2_type << "* " << r2_ind << "\n";
+                stream << tmp_literal << " = " << op << " " << r2_type << " " << r1_literal << ", " << tmp_ind_b << "\n";
+                stream << "store " << r2_type << " " << tmp_literal << ", " << r2_type << "* " << l_ind << "\n";
             }
-            std::string l_ind   = name_index[node.get_lvalue()->get_var_name()].first;
-            std::string l_type  = name_index[node.get_lvalue()->get_var_name()].second;
-            stream << "store " << l_type << " " << literal << ", " << l_type << "* " << l_ind << "\n"; 
-        }
-        if(!node.get_rvalue1()->is_literal() && node.get_lvalue()->get_var_type()!="string")
+            if(!node.get_rvalue1()->is_literal() && node.get_rvalue2()->is_literal())
+            {
+                std::string tmp_ind_b   = new_index();
+                std::string tmp_literal = new_index();
+                
+                std::string r2_literal  = node.get_rvalue2()->get_var_name();
+                std::string r1_type     = name_index[node.get_rvalue1()->get_var_name()].second;
+                std::string op          = get_llvm_op(node.get_oper(), r1_type);
+                std::string r1_ind      = name_index[node.get_rvalue1()->get_var_name()].first;
+                std::string l_ind       = name_index[node.get_lvalue()->get_var_name()].first;
+                stream << tmp_ind_b << " = load " << r1_type << ", " << r1_type << "* " << r1_ind << "\n";
+                stream << tmp_literal << " = " << op << " " << r1_type << " " << tmp_ind_b << ", " << r2_literal << "\n";
+                stream << "store " << r1_type << " " << tmp_literal << ", " << r1_type << "* " << l_ind << "\n";
+            }
+            if(!node.get_rvalue1()->is_literal() && !node.get_rvalue2()->is_literal())
+            {
+                std::string tmp_ind_r1 = new_index();
+                std::string tmp_ind_r2 = new_index();
+                std::string res_r1_r2  = new_index();
+                
+                std::string r1_type    = name_index[node.get_rvalue1()->get_var_name()].second;
+                std::string r2_type    = name_index[node.get_rvalue2()->get_var_name()].second;
+                std::string op         = get_llvm_op(node.get_oper(), r2_type);
+                std::string r1_ind     = name_index[node.get_rvalue1()->get_var_name()].first;
+                std::string r2_ind     = name_index[node.get_rvalue2()->get_var_name()].first;
+                std::string l_ind      = name_index[node.get_lvalue()->get_var_name()].first;
+                stream << tmp_ind_r1 << " = load " << r1_type << ", " << r1_type << "* " << r1_ind << "\n";
+                stream << tmp_ind_r2 << " = load " << r2_type << ", " << r2_type << "* " << r2_ind << "\n";
+                stream << res_r1_r2  << " = " << op << " " << r1_type << " " << tmp_ind_r1 << ", " << tmp_ind_r2 << "\n";
+                stream << "store " << r1_type << " " << res_r1_r2 << ", " << r1_type << "* " << l_ind << "\n";
+            }
+        } else if(node.get_rvalue1() != nullptr)
         {
-            std::string r1_ind  = name_index[node.get_rvalue1()->get_var_name()].first;
-            std::string l_ind   = name_index[node.get_lvalue()->get_var_name()].first;
-            std::string l_type  = name_index[node.get_lvalue()->get_var_name()].second;
-            std::string tmp_ind = new_index();
-            stream << tmp_ind << " = load " << l_type << ", " << l_type << "* " << r1_ind << "\n";
-            stream << "store " << l_type << " " << tmp_ind << ", " << l_type << "* " << l_ind << "\n"; 
+            if(node.get_rvalue1()->is_literal() && node.get_lvalue()->get_var_type()!="string")
+            {
+                std::string literal = node.get_rvalue1()->get_var_name();
+                if(literal[0] == '\'')
+                {
+                    literal = std::to_string(static_cast<int>(literal[1]));
+                }
+                std::string l_ind   = name_index[node.get_lvalue()->get_var_name()].first;
+                std::string l_type  = name_index[node.get_lvalue()->get_var_name()].second;
+                stream << "store " << l_type << " " << literal << ", " << l_type << "* " << l_ind << "\n"; 
+            }
+            if(!node.get_rvalue1()->is_literal() && node.get_lvalue()->get_var_type()!="string")
+            {
+                std::string r1_ind  = name_index[node.get_rvalue1()->get_var_name()].first;
+                std::string l_ind   = name_index[node.get_lvalue()->get_var_name()].first;
+                std::string l_type  = name_index[node.get_lvalue()->get_var_name()].second;
+                std::string tmp_ind = new_index();
+                stream << tmp_ind << " = load " << l_type << ", " << l_type << "* " << r1_ind << "\n";
+                stream << "store " << l_type << " " << tmp_ind << ", " << l_type << "* " << l_ind << "\n"; 
+            }
         }
     }
+    
 }
 
 void CodeGen::visit(ASTPrint &node)
@@ -437,7 +505,9 @@ void CodeGen::visit(ASTPrint &node)
 
 void CodeGen::visit(ASTElse &node)
 {
+    is_inner_scope = true;
     node.get_scope()->accept(*this);
+    is_inner_scope = false;
 }
 
 void CodeGen::visit(ASTIf &node)
@@ -446,7 +516,7 @@ void CodeGen::visit(ASTIf &node)
     std::string log_op = "";
     std::string cmp_type = "icmp";
     std::string lvalue_type = name_index[node.get_first()].second;
-    if(lvalue_type == "int")
+    if(lvalue_type == "int" || lvalue_type == "i32")
     {
         log_op = get_log_op_int(node.get_op());
     } else if(lvalue_type == "float" || lvalue_type == "double")

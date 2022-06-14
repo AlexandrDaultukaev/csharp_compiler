@@ -72,11 +72,11 @@ int main (int argc, const char * argv []) {
     // if(dump_sem)
     // {
     
-    // if(semantic_visitor.get_errors().size() > 0)
-    // {
-    //     cs_lang::print_semantic_report(semantic_visitor);
-    //     exit(EXIT_FAILURE);
-    // }
+    if(semantic_visitor.get_errors().size() > 0)
+    {
+        cs_lang::print_semantic_report(semantic_visitor);
+        exit(EXIT_FAILURE);
+    }
     
     if(optim1 || wall)
     {

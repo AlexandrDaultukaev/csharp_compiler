@@ -82,6 +82,10 @@ int SemanticVisitor::get_level(std::string str)
 void SemanticVisitor::visit(ASTFunction& node)
 {
     current_function_scope = node.func_name();
+    if(node.get_return() == nullptr && node.return_type() != "void")
+    {
+        append_error(std::make_pair("Function definition ERROR", "No return statement in function returning non-void, in function \'" + node.func_name() + "\', in line " + std::to_string(node.get_line()) +"\n"));
+    }
     if(node.get_return() != nullptr)
     {
         int lvl = get_level(node.get_return()->get_return_value()+"_return_");
@@ -196,11 +200,11 @@ void SemanticVisitor::visit(ASTAssign& node) {
     {
         bool is_def = node.get_lvalue()->get_var_type() == ""? false : true;
         std::string lhs_type = "";
-        if(inner_table[std::to_string(inner_counter)].contains(node.get_lvalue()->get_var_name()))
+        /*if(inner_table[std::to_string(inner_counter)].contains(node.get_lvalue()->get_var_name()))
         {
             lhs_type = inner_table[std::to_string(inner_counter)][node.get_lvalue()->get_var_name()];
         }
-        else if(table[get_fname_index(current_function_scope)].contains(node.get_lvalue()->get_var_name()))
+        else */if(table[get_fname_index(current_function_scope)].contains(node.get_lvalue()->get_var_name()))
         {
             lhs_type = table[get_fname_index(current_function_scope)][node.get_lvalue()->get_var_name()].type;
         } else if(table[0].contains(node.get_lvalue()->get_var_name()))
@@ -217,14 +221,16 @@ void SemanticVisitor::visit(ASTAssign& node) {
             }
             else
             {
-                if(table[get_fname_index(current_function_scope)].contains(node.get_rvalue1()->get_var_name()))
-                {
-                    type_r1 = table[get_fname_index(current_function_scope)][node.get_rvalue1()->get_var_name()].type;
-                } else if(inner_table[std::to_string(inner_counter)].contains(node.get_rvalue1()->get_var_name()))
+                /*if(inner_table[std::to_string(inner_counter)].contains(node.get_rvalue1()->get_var_name()))
                 {
                     type_r1 = inner_table[std::to_string(inner_counter)][node.get_rvalue1()->get_var_name()];
+                } else*/ if(table[get_fname_index(current_function_scope)].contains(node.get_rvalue1()->get_var_name()))
+                {
+                    type_r1 = table[get_fname_index(current_function_scope)][node.get_rvalue1()->get_var_name()].type;
+                } else if(table[0].contains(node.get_rvalue1()->get_var_name()))
+                {
+                    type_r1 = table[0][node.get_rvalue1()->get_var_name()].type;
                 }
-                //CHECK: 'string str = str;'
                 if(is_def && node.get_rvalue1()->get_var_name() == node.get_lvalue()->get_var_name())
                 {
                     errors.emplace_back(std::make_pair("Assign ERROR", "Use of unassigned local variable \'" + node.get_lvalue()->get_var_name() + "\' in line "+ std::to_string(node.get_line())));
@@ -271,7 +277,6 @@ void SemanticVisitor::visit(ASTAssign& node) {
 
                     if(table[get_fname_index(current_function_scope)].contains(node.get_lvalue()->get_var_name()))
                     {
-                        
                         l_type = table[get_fname_index(current_function_scope)][node.get_lvalue()->get_var_name()].type;
                     } else if(table[0].contains(node.get_lvalue()->get_var_name()))
                     {
@@ -288,6 +293,7 @@ void SemanticVisitor::visit(ASTAssign& node) {
                 
             }
         }
+        
         if(node.get_rvalue1() != nullptr)
         {
             
@@ -296,11 +302,23 @@ void SemanticVisitor::visit(ASTAssign& node) {
                 r1_type = get_type_by_lit_type(node.get_rvalue1()->get_var_type());
             } else {
                 r1_type = node.get_rvalue1()->get_var_type();
+                if(r1_type == "")
+                {
+                    if(inner_table[std::to_string(inner_counter)].contains(node.get_rvalue1()->get_var_name()))
+                    {
+                        r1_type = inner_table[std::to_string(inner_counter)][node.get_rvalue1()->get_var_name()];
+                    }
+                    else if(table[get_fname_index(current_function_scope)].contains(node.get_rvalue1()->get_var_name()))
+                    {
+                        r1_type = table[get_fname_index(current_function_scope)][node.get_rvalue1()->get_var_name()].type;
+                    } else if(table[0].contains(node.get_rvalue1()->get_var_name()))
+                    {
+                        r1_type = table[0][node.get_rvalue1()->get_var_name()].type;
+                    }
+                }
             }
             if(l_type != r1_type) {
-                std::cout << "r1type : " << node.get_rvalue1()->get_var_type() << "\n";
-                std::cout << "r1type : " << r1_type << "\n";
-                append_error(std::make_pair("Assign ERROR", "Cannot convert type \'" + l_type + "\' to \'" + r1_type + "\' in line " + std::to_string(node.get_rvalue1()->get_line())));
+                append_error(std::make_pair("Assign ERROR3", "Cannot convert type \'" + l_type + "\' to \'" + r1_type + "\' in line " + std::to_string(node.get_rvalue1()->get_line())));
             }
         }
         if(node.get_rvalue2() != nullptr)
@@ -310,10 +328,24 @@ void SemanticVisitor::visit(ASTAssign& node) {
                 
                 r2_type = get_type_by_lit_type(node.get_rvalue2()->get_var_type());
             } else {
-                r2_type = node.get_rvalue2()->get_var_type();
+                if(node.get_rvalue2()->get_var_type() != "")
+                {
+                    r2_type = node.get_rvalue2()->get_var_type();
+                }
+                else if(inner_table[std::to_string(inner_counter)].contains(node.get_rvalue2()->get_var_name()))
+                {
+                    r2_type = inner_table[std::to_string(inner_counter)][node.get_rvalue2()->get_var_name()];
+                }
+                else if(table[get_fname_index(current_function_scope)].contains(node.get_rvalue2()->get_var_name()))
+                {
+                    r2_type = table[get_fname_index(current_function_scope)][node.get_rvalue2()->get_var_name()].type;
+                } else if(table[0].contains(node.get_rvalue2()->get_var_name()))
+                {
+                    r2_type = table[0][node.get_rvalue2()->get_var_name()].type;
+                }
             }
             if(l_type != r2_type) {
-                append_error(std::make_pair("Assign ERROR: ", "Cannot convert type \'" + l_type + "\' to \'" + r2_type + "\' in line " + std::to_string(node.get_rvalue2()->get_line())));
+                append_error(std::make_pair("Assign ERROR4: ", "Cannot convert type \'" + l_type + "\' to \'" + r2_type + "\' in line " + std::to_string(node.get_rvalue2()->get_line())));
             }
         }
 
@@ -446,10 +478,6 @@ void SemanticVisitor::visit(ASTForCond& node) {
     }
     if(table[get_fname_index(current_function_scope)][node.get_first()].type != "int" && table[get_fname_index(current_function_scope)][node.get_first()].type != "float")
     {
-        std::cout << "y" << node.get_first() << "\n";
-        std::cout << "y" << inner_counter << "\n";
-        std::cout << "y" << inner_table[std::to_string(inner_counter)].contains(node.get_first()) << "\n";
-        std::cout << "y" << inner_table[std::to_string(inner_counter+1)].contains(node.get_first()) << "\n";
         if(inner_table[std::to_string(inner_counter+1)][node.get_first()] != "int" && inner_table[std::to_string(inner_counter+1)][node.get_first()] != "float")
         {
             errors.emplace_back(std::make_pair("For-condition ERROR", "Cannot iterate by type \'" + table[get_fname_index(current_function_scope)][node.get_first()].type + "\' in line "+ std::to_string(node.get_line())));

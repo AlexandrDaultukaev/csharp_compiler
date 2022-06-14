@@ -288,7 +288,6 @@ void VisitorInitialiser::visit(ASTProgram &node) {
       if (expr.is<CsharpParser::Print_statementContext *>()) {
         VisitorInitialiser visitor(
             expr.as<CsharpParser::Print_statementContext *>());
-        std::cout << "fprint\n";
         child = new ASTPrint;
         child->accept(visitor);
         node.append_child(child);
@@ -570,7 +569,6 @@ void VisitorInitialiser::visit(ASTAssign &node) {
         SetLiteralVariable(r2, ctx->literal(lit_ind));
         r2->set_frag("LRIGHT_ASSIGN2");
       }
-
       node.set_rvalue1(r1);
       if (is_r2_set) {
         node.set_oper(ctx->BINARY_OP()->getText());
