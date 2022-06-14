@@ -13,6 +13,7 @@ compilers-1-AlexandrDaultukaev created by GitHub Classroom
 * Установить Antlr 4.9
 * Установить Cmake 3
 * GNU Make 4.3
+* Clang 14.0
 
 Сборка грамматики:
 (В корне репозитория)
