@@ -25,9 +25,9 @@ float main(int i)
         {
            b = 5;
            int b1 = 4;
-           
+           j = 4444;
         }
-
+        
         int jk = 2;
         
         b = 5;

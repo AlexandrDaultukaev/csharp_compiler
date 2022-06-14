@@ -22,27 +22,28 @@ int main (int argc, const char * argv []) {
 
     CLI::App app;
     std::string filepath;
-    std::string fileout;
+    std::string fileout = "../../examples/file.ll";
     std::string xml_file = "";
     bool dump_tokens_key = false;
     bool version_key = false;
     bool dump_ast = false;
     bool dump_tab = false;
     bool dump_sem = false;
+    bool dump_asm = false;
     bool optim1 = false;
     bool wall = false;
     app.add_flag("--dump-tokens", dump_tokens_key, "Dump func");
     app.add_flag("--dump-ast", dump_ast, "Dump ast");
     app.add_flag("--dump-table", dump_tab, "Dump table");
     app.add_flag("--dump-semantic", dump_sem, "Dump semantic report");
+    app.add_flag("--dump-asm", dump_asm, "Dump LLVM IR");
     app.add_flag("--version", version_key, "Version func");
     app.add_flag("--opt", optim1, "Unable optimization");
     app.add_flag("--wall", wall, "Warnings info");
     auto fileflag = app.add_option("-f, --file", filepath, "Filepath");
-    auto fileflagout = app.add_option("-o, --out", fileout, "Out file");
+    app.add_option("-o, --out", fileout, "Out file");
     app.add_option("-x, --to-xml", xml_file, "Filepath XML");
     fileflag->needs(fileflag);
-    fileflagout->needs(fileflagout);
     CLI11_PARSE(app, argc, argv);
     if(version_key)
     {
@@ -90,5 +91,20 @@ int main (int argc, const char * argv []) {
     CodeGen code_generator(stream, filepath, fileout);
     parse_result.m_program->accept(code_generator);
     stream.close();
+    
+    if(dump_asm) {    
+        std::string line;
+        std::ifstream ll(fileout);
+        if (ll.is_open())
+        {
+            while (std::getline(ll,line) )
+            {
+                std::cout << line << '\n';
+            }
+            ll.close();
+        }
+        if(fileout == "../../examples/file.ll")
+            std::remove("../../examples/file.ll");
+    }
     return 0;
 }

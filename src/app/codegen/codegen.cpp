@@ -35,7 +35,9 @@ std::map<std::string, std::pair<std::string, std::string>> name_index;
 std::map<std::string, std::pair<std::string, std::string>> name_index_globals;
 std::map<std::string, std::pair<std::string, std::string>> name_index_params;
 std::map<std::string, std::pair<std::string, std::string>> name_index_scope;
-std::map<std::string, std::pair<std::string, std::string>> name_index_scope_new;
+std::map<std::string, std::string> funcs_props;
+int amount_new = 0;
+std::vector<std::string> name_index_scope_new;
 std::map<std::string, std::string> global_strs;
 bool is_inner_scope = false;
 
@@ -70,6 +72,9 @@ std::string get_llvm_type(std::string p)
     } else if(p == "float" || p == "FLOAT_NUMBER" || p == "FLOAT")
     {
         ptype = "double";
+    } else if(p == "void")
+    {
+        ptype = "void";
     }
     return ptype;
 }
@@ -201,6 +206,7 @@ void CodeGen::visit(ASTFunction &node)
     name_index_params.clear();
     name_index = name_index_globals;
     current_function = node.func_name();
+    funcs_props[node.func_name()] = node.return_type();
     stream << "define dso_local " << get_llvm_type(node.return_type()) << " @" << node.func_name();
 //PARAMS
     stream << "(";
@@ -244,7 +250,6 @@ void CodeGen::visit(ASTFunction &node)
     if(node.get_return() != nullptr){
         if(!name_index.contains(node.get_return()->get_return_value()))
             {
-                std::cout << "WAG2:" << node.get_return()->get_return_type() << '\n';
                 ret_type = node.get_return()->get_return_type();
 
                 ret_type = get_llvm_type(ret_type);
@@ -252,7 +257,6 @@ void CodeGen::visit(ASTFunction &node)
                 stream << "ret ";
                 stream << ret_type << " " << node.get_return()->get_return_value() << '\n';
             } else {
-                std::cout << "WAG:" << node.get_return()->get_return_type() << '\n';
                 ret_type = name_index[node.get_return()->get_return_value()].second;
 
                 auto ind = name_index[node.get_return()->get_return_value()].first;
@@ -263,6 +267,8 @@ void CodeGen::visit(ASTFunction &node)
                 
                 stream << ret_type << " " << tmp_return << '\n';
             }
+    } else {
+        stream << "ret void\n";
     }
 
     stream << "}\n";
@@ -270,9 +276,19 @@ void CodeGen::visit(ASTFunction &node)
 
 void CodeGen::visit(ASTScope &node)
 {
+    int am_new_tmp = 0; 
+    if(is_inner_scope)
+    {
+        am_new_tmp = amount_new;
+    }
     for(auto& s : node.get_statements())
     {
         s->accept(*this);
+    }
+    for(; amount_new-am_new_tmp>0; amount_new--)
+    {
+        name_index_scope.erase(name_index_scope_new.back());
+        name_index_scope_new.pop_back();
     }
 }
 
@@ -297,7 +313,15 @@ void CodeGen::visit(ASTAssign &node)
                 if(type == "float")
                     type = "double";
             }
-            name_index[node.get_lvalue()->get_var_name()] = std::make_pair(ind, type);
+            if(is_inner_scope)
+            {
+                name_index_scope[node.get_lvalue()->get_var_name()] = std::make_pair(ind, type);
+                name_index_scope_new.push_back(node.get_lvalue()->get_var_name());
+                amount_new++;
+            } else {
+                name_index[node.get_lvalue()->get_var_name()] = std::make_pair(ind, type);
+            }
+            
             stream << ind << " = alloca " << type << "\n";
             std::string pure_str = node.get_rvalue1()->get_var_name().substr(1,node.get_rvalue1()->get_var_name().size()-2);
             global_strs["@__const."+current_function+"."+node.get_lvalue()->get_var_name() + " = "] = "private unnamed_addr constant "+type+" c\"" + pure_str + "\\00\"\n";
@@ -331,7 +355,14 @@ void CodeGen::visit(ASTAssign &node)
             {
                 name_index_globals[node.get_lvalue()->get_var_name()] = std::make_pair(ind, type);
             }
-            name_index[node.get_lvalue()->get_var_name()] = std::make_pair(ind, type);
+            if(is_inner_scope)
+            {
+                name_index_scope[node.get_lvalue()->get_var_name()] = std::make_pair(ind, type);
+                name_index_scope_new.push_back(node.get_lvalue()->get_var_name());
+                amount_new++;
+            } else {
+                name_index[node.get_lvalue()->get_var_name()] = std::make_pair(ind, type);
+            }
         }
     } else {
         if(name_index[node.get_lvalue()->get_var_name()].second[0] == '[')
@@ -390,7 +421,13 @@ void CodeGen::visit(ASTAssign &node)
                 {
                     stream << resf << ", ";
                 }
-                stream << type << "* " << name_index[node.get_lvalue()->get_var_name()].first << "\n";
+                if(is_inner_scope)
+                {
+                    stream << type << "* " << name_index_scope[node.get_lvalue()->get_var_name()].first << "\n";
+                } else {
+                    stream << type << "* " << name_index[node.get_lvalue()->get_var_name()].first << "\n";
+                }
+                
             }
             if(node.get_rvalue1()->is_literal() && !node.get_rvalue2()->is_literal())
             {
@@ -398,11 +435,26 @@ void CodeGen::visit(ASTAssign &node)
                 std::string tmp_literal = new_index();
                 
                 std::string r1_literal  = node.get_rvalue1()->get_var_name();
-                std::string r2_type     = name_index[node.get_rvalue2()->get_var_name()].second;
-                std::string op          = get_llvm_op(node.get_oper(), r2_type);
+                std::string r2_type     = "";
                 
-                std::string r2_ind      = name_index[node.get_rvalue2()->get_var_name()].first;
-                std::string l_ind       = name_index[node.get_lvalue()->get_var_name()].first;
+                
+                std::string r2_ind      = "";
+                std::string l_ind       = "";
+                if(name_index_scope.contains(node.get_lvalue()->get_var_name()))
+                {
+                    l_ind = name_index_scope[node.get_lvalue()->get_var_name()].first;
+                } else {
+                    l_ind   = name_index[node.get_lvalue()->get_var_name()].first;
+                }
+                if(name_index_scope.contains(node.get_rvalue2()->get_var_name()))
+                {
+                    r2_ind = name_index_scope[node.get_rvalue2()->get_var_name()].first;
+                    r2_type = name_index_scope[node.get_rvalue2()->get_var_name()].second;
+                } else {
+                    r2_ind = name_index[node.get_rvalue2()->get_var_name()].first;
+                    r2_type = name_index[node.get_rvalue2()->get_var_name()].second;
+                }
+                std::string op          = get_llvm_op(node.get_oper(), r2_type);
                 stream << tmp_ind_b << " = load " << r2_type << ", " << r2_type << "* " << r2_ind << "\n";
                 stream << tmp_literal << " = " << op << " " << r2_type << " " << r1_literal << ", " << tmp_ind_b << "\n";
                 stream << "store " << r2_type << " " << tmp_literal << ", " << r2_type << "* " << l_ind << "\n";
@@ -413,10 +465,25 @@ void CodeGen::visit(ASTAssign &node)
                 std::string tmp_literal = new_index();
                 
                 std::string r2_literal  = node.get_rvalue2()->get_var_name();
-                std::string r1_type     = name_index[node.get_rvalue1()->get_var_name()].second;
+                std::string r1_type     = "";
+                
+                std::string r1_ind      = "";
+                std::string l_ind       = "";
+                if(name_index_scope.contains(node.get_lvalue()->get_var_name()))
+                {
+                    l_ind = name_index_scope[node.get_lvalue()->get_var_name()].first;
+                } else {
+                    l_ind   = name_index[node.get_lvalue()->get_var_name()].first;
+                }
+                if(name_index_scope.contains(node.get_rvalue1()->get_var_name()))
+                {
+                    r1_ind = name_index_scope[node.get_rvalue1()->get_var_name()].first;
+                    r1_type = name_index_scope[node.get_rvalue1()->get_var_name()].second;
+                } else {
+                    r1_ind = name_index[node.get_rvalue1()->get_var_name()].first;
+                    r1_type = name_index[node.get_rvalue1()->get_var_name()].second;
+                }
                 std::string op          = get_llvm_op(node.get_oper(), r1_type);
-                std::string r1_ind      = name_index[node.get_rvalue1()->get_var_name()].first;
-                std::string l_ind       = name_index[node.get_lvalue()->get_var_name()].first;
                 stream << tmp_ind_b << " = load " << r1_type << ", " << r1_type << "* " << r1_ind << "\n";
                 stream << tmp_literal << " = " << op << " " << r1_type << " " << tmp_ind_b << ", " << r2_literal << "\n";
                 stream << "store " << r1_type << " " << tmp_literal << ", " << r1_type << "* " << l_ind << "\n";
@@ -427,12 +494,35 @@ void CodeGen::visit(ASTAssign &node)
                 std::string tmp_ind_r2 = new_index();
                 std::string res_r1_r2  = new_index();
                 
-                std::string r1_type    = name_index[node.get_rvalue1()->get_var_name()].second;
-                std::string r2_type    = name_index[node.get_rvalue2()->get_var_name()].second;
+                std::string r1_type    = "";
+                std::string r2_type    = "";
+                
+                std::string r1_ind     = "";
+                std::string r2_ind     = "";
+                std::string l_ind      = "";
+                if(name_index_scope.contains(node.get_lvalue()->get_var_name()))
+                {
+                    l_ind = name_index_scope[node.get_lvalue()->get_var_name()].first;
+                } else {
+                    l_ind   = name_index[node.get_lvalue()->get_var_name()].first;
+                }
+                if(name_index_scope.contains(node.get_rvalue1()->get_var_name()))
+                {
+                    r1_ind = name_index_scope[node.get_rvalue1()->get_var_name()].first;
+                    r1_type = name_index_scope[node.get_rvalue1()->get_var_name()].second;
+                } else {
+                    r1_ind = name_index[node.get_rvalue1()->get_var_name()].first;
+                    r1_type = name_index[node.get_rvalue1()->get_var_name()].second;
+                }
+                if(name_index_scope.contains(node.get_rvalue2()->get_var_name()))
+                {
+                    r2_ind = name_index_scope[node.get_rvalue2()->get_var_name()].first;
+                    r2_type = name_index_scope[node.get_rvalue2()->get_var_name()].second;
+                } else {
+                    r2_ind = name_index[node.get_rvalue2()->get_var_name()].first;
+                    r2_type = name_index[node.get_rvalue2()->get_var_name()].second;
+                }
                 std::string op         = get_llvm_op(node.get_oper(), r2_type);
-                std::string r1_ind     = name_index[node.get_rvalue1()->get_var_name()].first;
-                std::string r2_ind     = name_index[node.get_rvalue2()->get_var_name()].first;
-                std::string l_ind      = name_index[node.get_lvalue()->get_var_name()].first;
                 stream << tmp_ind_r1 << " = load " << r1_type << ", " << r1_type << "* " << r1_ind << "\n";
                 stream << tmp_ind_r2 << " = load " << r2_type << ", " << r2_type << "* " << r2_ind << "\n";
                 stream << res_r1_r2  << " = " << op << " " << r1_type << " " << tmp_ind_r1 << ", " << tmp_ind_r2 << "\n";
@@ -447,15 +537,38 @@ void CodeGen::visit(ASTAssign &node)
                 {
                     literal = std::to_string(static_cast<int>(literal[1]));
                 }
-                std::string l_ind   = name_index[node.get_lvalue()->get_var_name()].first;
-                std::string l_type  = name_index[node.get_lvalue()->get_var_name()].second;
+                std::string l_ind = "";
+                std::string l_type = "";
+                if(name_index_scope.contains(node.get_lvalue()->get_var_name()))
+                {
+                    l_ind = name_index_scope[node.get_lvalue()->get_var_name()].first;
+                    l_type = name_index_scope[node.get_lvalue()->get_var_name()].second;
+                } else {
+                    l_ind   = name_index[node.get_lvalue()->get_var_name()].first;
+                    l_type  = name_index[node.get_lvalue()->get_var_name()].second;
+                }
+                
                 stream << "store " << l_type << " " << literal << ", " << l_type << "* " << l_ind << "\n"; 
             }
             if(!node.get_rvalue1()->is_literal() && node.get_lvalue()->get_var_type()!="string")
             {
-                std::string r1_ind  = name_index[node.get_rvalue1()->get_var_name()].first;
-                std::string l_ind   = name_index[node.get_lvalue()->get_var_name()].first;
-                std::string l_type  = name_index[node.get_lvalue()->get_var_name()].second;
+                std::string r1_ind  = "";
+                std::string l_ind   = "";
+                std::string l_type  = "";
+                if(name_index_scope.contains(node.get_rvalue1()->get_var_name()))
+                {
+                    r1_ind = name_index_scope[node.get_rvalue1()->get_var_name()].first;
+                } else {
+                    r1_ind   = name_index[node.get_lvalue()->get_var_name()].first;
+                }
+                if(name_index_scope.contains(node.get_lvalue()->get_var_name()))
+                {
+                    l_ind = name_index_scope[node.get_lvalue()->get_var_name()].first;
+                    l_type = name_index_scope[node.get_lvalue()->get_var_name()].second;
+                } else {
+                    l_ind   = name_index[node.get_lvalue()->get_var_name()].first;
+                    l_type  = name_index[node.get_lvalue()->get_var_name()].second;
+                }
                 std::string tmp_ind = new_index();
                 stream << tmp_ind << " = load " << l_type << ", " << l_type << "* " << r1_ind << "\n";
                 stream << "store " << l_type << " " << tmp_ind << ", " << l_type << "* " << l_ind << "\n"; 
@@ -472,26 +585,36 @@ void CodeGen::visit(ASTPrint &node)
     std::string tmp_ind2 = "";
     std::string tmp_ind2_type = "i32";
     std::string str = "@.str";
-    if(name_index[node.get_name()].second[0] != '[')
+    std::string name_type = "";
+    std::string name_ind = "";
+    if(name_index_scope.contains(node.get_name()))
     {
-        stream << tmp_ind << " = load " << name_index[node.get_name()].second << ", " << name_index[node.get_name()].second << "* " << name_index[node.get_name()].first << "\n";
+        name_type = name_index_scope[node.get_name()].second;
+        name_ind  = name_index_scope[node.get_name()].first;
+    } else {
+        name_type   = name_index[node.get_name()].second;
+        name_ind    = name_index[node.get_name()].first;
+    }
+    if(name_type[0] != '[')
+    {
+        stream << tmp_ind << " = load " << name_type << ", " << name_type << "* " << name_ind << "\n";
     }
     
-    if(name_index[node.get_name()].second == "char" || name_index[node.get_name()].second == "i8")
+    if(name_type == "char" || name_type == "i8")
     {
         tmp_ind2 = new_index();
-        stream << tmp_ind2 << " = sext " << name_index[node.get_name()].second << " " << tmp_ind << " to i32\n";
+        stream << tmp_ind2 << " = sext " << name_type << " " << tmp_ind << " to i32\n";
         str = "@.str.1";
     }
-    else if(name_index[node.get_name()].second == "double")
+    else if(name_type == "double")
     {
         tmp_ind2_type = "double"; 
         str = "@.str.2";
-    } else if(name_index[node.get_name()].second[0] == '[')
+    } else if(name_type[0] == '[')
     {
         tmp_ind2 = new_index();
-        std::string string_type = name_index[node.get_name()].second;
-        stream << tmp_ind2 << " = getelementptr inbounds " << string_type << ", " << string_type << "* " << name_index[node.get_name()].first << ", i64 0, i64 0\n";
+        std::string string_type = name_type;
+        stream << tmp_ind2 << " = getelementptr inbounds " << string_type << ", " << string_type << "* " << name_ind << ", i64 0, i64 0\n";
         str = "@.str.3";
         tmp_ind2_type = "i8*";
     }
@@ -515,7 +638,16 @@ void CodeGen::visit(ASTIf &node)
     std::string load_index1 = new_index();
     std::string log_op = "";
     std::string cmp_type = "icmp";
-    std::string lvalue_type = name_index[node.get_first()].second;
+    std::string lvalue_type = "";
+    std::string lvalue_index = "";
+    if(name_index_scope.contains(node.get_first()))
+    {
+        lvalue_type = name_index_scope[node.get_first()].second;
+        lvalue_index  = name_index_scope[node.get_first()].first;
+    } else {
+        lvalue_index   = name_index[node.get_first()].first;
+        lvalue_type    = name_index[node.get_first()].second;
+    }
     if(lvalue_type == "int" || lvalue_type == "i32")
     {
         log_op = get_log_op_int(node.get_op());
@@ -526,7 +658,7 @@ void CodeGen::visit(ASTIf &node)
     }
     std::string load_index2 = "";
     
-    std::string lvalue_index = name_index[node.get_first()].first;
+    
     std::string rvalue_type = "";
     std::string rvalue_index = "";
     
@@ -535,8 +667,15 @@ void CodeGen::visit(ASTIf &node)
         rvalue_index = node.get_second();
         rvalue_type = get_llvm_type(node.get_second_type());
     } else {
-        rvalue_index = name_index[node.get_first()].first;
-        rvalue_type = name_index[node.get_first()].second;
+        if(name_index_scope.contains(node.get_second()))
+        {
+            rvalue_type = name_index_scope[node.get_second()].second;
+            rvalue_index   = name_index_scope[node.get_second()].first;
+        } else {
+            rvalue_index = name_index[node.get_second()].first;
+            rvalue_type = name_index[node.get_second()].second;
+        }
+        
     }
     stream << load_index1 << " = load " << lvalue_type << ", " << lvalue_type << "* " << lvalue_index << "\n";
 
@@ -567,7 +706,9 @@ void CodeGen::visit(ASTIf &node)
     stream << "\n";
     if_index = if_index.substr(1);
     stream << if_index << ":\n";
+    is_inner_scope = true;
     node.get_scope()->accept(*this);
+    is_inner_scope = false;
     stream << "br label " << after_if_index << "\n";
     if(else_index != "")
     {
@@ -594,12 +735,28 @@ void CodeGen::visit(ASTFor &node)
     std::string load2 = "";
     std::string cmp_type = "icmp";
     std::string log_op = get_log_op_int(node.get_cond()->get_op());
-    std::string first_type = name_index[node.get_cond()->get_first()].second;
+
+    //std::string first_type = name_index[node.get_cond()->get_first()].second;
+    std::string first_type = "";
+    std::string first_index = "";
+    if(name_index_scope.contains(node.get_cond()->get_first()))
+    {
+        first_type = name_index_scope[node.get_cond()->get_first()].second;
+        first_index = name_index_scope[node.get_cond()->get_first()].first;
+    } else {
+        first_type = name_index[node.get_cond()->get_first()].second;
+        first_index = name_index[node.get_cond()->get_first()].first;
+    }
     std::string second = node.get_cond()->get_second();
     load2 = second;
     if(!node.get_cond()->is_literal())
     {
-        second = name_index[node.get_cond()->get_second()].first;
+        if(name_index_scope.contains(node.get_cond()->get_second()))
+        {
+            second = name_index[node.get_cond()->get_second()].first;
+        } else {
+            second = name_index[node.get_cond()->get_second()].first;
+        }
         load2 = new_index();
         stream << load2 << " = load " << first_type << " " << ", " << first_type << "* " << second << "\n";
     }
@@ -608,14 +765,16 @@ void CodeGen::visit(ASTFor &node)
         log_op = get_log_op_double(node.get_cond()->get_op());
         cmp_type = "fcmp";
     }
-    stream << load << " = load " << first_type << ", " << first_type << "* " << name_index[node.get_cond()->get_first()].first << "\n";
+    stream << load << " = load " << first_type << ", " << first_type << "* " << first_index << "\n";
     std::string cmp = new_index();
     stream << cmp << " = " << cmp_type << " " << log_op << " " << first_type << " " << load << ", " << load2 << "\n";
     std::string inner = new_index();
     std::string after_op = new_index();
     stream << "br i1 " << cmp << ", label " << inner << ", label " << end_for << "\n";
     stream << inner.substr(1) << ":\n";
+    is_inner_scope = true;
     node.get_scope()->accept(*this);
+    is_inner_scope = false;
     stream << "br label " << after_op << "\n";
 
     stream << after_op.substr(1) << ":\n";
@@ -627,11 +786,20 @@ void CodeGen::visit(ASTFor &node)
         std::string after_id = node.get_op()->get_id();
         std::string after_oper = node.get_op()->get_unary_op();
         std::string op1sym(1, after_oper[0]);
-        std::string after_id_type = name_index[after_id].second;
+        std::string after_id_type = "";
+        std::string after_id_index = "";
+        if(name_index_scope.contains(after_id))
+        {
+            after_id_type = name_index_scope[after_id].second;
+            after_id_index = name_index_scope[after_id].first;
+        } else {
+            after_id_type = name_index[after_id].second;
+            after_id_index = name_index[after_id].first;
+        }
         std::string llvm_oper = get_llvm_op(op1sym, after_id_type);
         
 
-        stream << after_load << " = load " << after_id_type << ", " << after_id_type << "* " << name_index[after_id].first << "\n";
+        stream << after_load << " = load " << after_id_type << ", " << after_id_type << "* " << after_id_index << "\n";
         std::string res = new_index();
         stream << res << " = " << llvm_oper << " " << after_id_type << " " << after_load;
         if(after_id_type == "double")
@@ -640,9 +808,27 @@ void CodeGen::visit(ASTFor &node)
         } else {
             stream << ", 1\n";
         }
-        stream << "store " << after_id_type << " " << res << ", " << after_id_type << "* " << name_index[node.get_cond()->get_first()].first << "\n";
+        //first_index = cond->first->index
+        stream << "store " << after_id_type << " " << res << ", " << after_id_type << "* " << first_index << "\n";
         
     }
     stream << "br label " << cond << "\n";
     stream << end_for.substr(1) << ":\n";
+}
+
+void CodeGen::visit(ASTFuncCall &node)
+{
+    auto args = node.get_args_from_vector();
+    auto name = node.func_name();
+    auto ret_type = funcs_props[name];
+    stream << "call " << ret_type << " @" << name << "(";
+    for(std::size_t i = 0; i < args.size(); i++)
+    {
+        stream << get_llvm_type(args[i].second) << " noundef " << args[i].first;
+        if(i+1 < args.size())
+        {
+            stream << ", ";
+        }
+    }
+    stream << ")\n";
 }

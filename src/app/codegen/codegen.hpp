@@ -22,7 +22,7 @@ public:
   void visit(ASTProgram &node) override;
   void visit(ASTFunction &node) override;
   void visit(ASTVariable &node) {}
-  void visit(ASTFuncCall &node) {}
+  void visit(ASTFuncCall &node) override;
   void visit(ASTScope &node) override;
   void visit(ASTArgs &node) {}
   void visit(ASTAssign &node) override;

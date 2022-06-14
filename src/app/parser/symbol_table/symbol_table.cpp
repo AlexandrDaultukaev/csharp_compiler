@@ -26,6 +26,7 @@ static std::string current_function = "Global";
 static std::string current_scope = "";
 std::size_t expr_counter = 0;
 int func_scope = 0;
+bool pit = false;
 
 void VisitorTable::visit(ASTProgram& node)
 {
@@ -350,7 +351,8 @@ void VisitorTable::visit(ASTElse &node) {
     std::size_t cs = inner_counter+1;
     std::cout << "ELSE:\n";
     node.get_scope()->accept(*this);
-    print_inner_table(std::to_string(cs));
+    if(pit)
+        print_inner_table(std::to_string(cs));
     
     decr_level();
 }
@@ -483,7 +485,8 @@ void VisitorTable::visit(ASTIf& node)
     std::size_t cs = inner_counter+1;
     std::cout << "IF:\n";
     node.get_scope()->accept(*this);
-    print_inner_table(std::to_string(cs));
+    if(pit)
+        print_inner_table(std::to_string(cs));
     
     decr_level();
     if(node.get_else() != nullptr)
@@ -515,7 +518,8 @@ void VisitorTable::visit(ASTFor& node)
     std::size_t cs = inner_counter+1;
     std::cout << "FOR:\n";
     node.get_scope()->accept(*this);
-    print_inner_table(std::to_string(cs));
+    if(pit)
+        print_inner_table(std::to_string(cs));
     
     decr_level();
 
