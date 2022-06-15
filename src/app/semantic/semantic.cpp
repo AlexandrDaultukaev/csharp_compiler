@@ -135,7 +135,7 @@ void SemanticVisitor::visit(ASTFuncCall& node) {
     if(node.get_args_from_vector().size() != f_props[node.func_name()].size())
     {
         try {
-            throw std::runtime_error("ERROR: Incorrect number of arguments when calling a function \'" + node.func_name() + "\' in line" + std::to_string(node.get_line()));
+            throw std::runtime_error("ERROR: Incorrect number of arguments when calling a function \'" + node.func_name() + "\' in line " + std::to_string(node.get_line()));
         } catch(std::runtime_error& e)
         {
             std::cerr << e.what() << "\n";

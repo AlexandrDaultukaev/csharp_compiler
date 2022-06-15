@@ -139,6 +139,16 @@ std::string get_llvm_op(std::string op, std::string type)
             std::cerr << "ERROR: invalid operands to binary expression ('double' and 'double')\n";
         }
         ret_op = "srem";
+    } else if(op == "*")
+    {
+        if(type == "int" || type == "i32")
+        {
+            ret_op = "mul";
+        }
+        if(type == "float" || type == "double")
+        {
+            ret_op = "fmul";
+        }
     }
 
     return ret_op;
@@ -924,7 +934,8 @@ void CodeGen::visit(ASTFor &node)
             stream << ", 1\n";
         }
         //first_index = cond->first->index
-        stream << "store " << after_id_type << " " << res << ", " << after_id_type << "* " << first_index << "\n";
+        
+        stream << "store " << after_id_type << " " << res << ", " << after_id_type << "* " << after_id_index << "\n";
         
     }
     stream << "br label " << cond << "\n";
