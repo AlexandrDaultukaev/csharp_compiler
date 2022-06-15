@@ -22,7 +22,7 @@ float main()
 {
     int sm = 3;
     int k = 15;
-    
+    int l = 5;
     char fc = 'A';
     float ff = 24.2;
     k = sm + 1;
@@ -39,6 +39,13 @@ float main()
         {
            b = 5;
            int b1 = 4;
+           for(int b2 = 6; b2 > b1; b2--)
+           {
+                l = l + b2;
+                string messagefor = "Local l";
+                WriteLine(messagefor);
+                WriteLine(l);
+           }
            j = 4444;
         }
         string message1 = "Local j";

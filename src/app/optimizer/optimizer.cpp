@@ -171,6 +171,7 @@ void OptimizerVisitor::visit(ASTFor &node)
 {
     set_used_var(node.get_assing()->get_lvalue()->get_var_name());
     node.get_cond()->accept(*this);
+    node.get_scope()->accept(*this);
 }
 
 void OptimizerVisitor::visit(ASTAssign &node)

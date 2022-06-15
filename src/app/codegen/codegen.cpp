@@ -878,7 +878,7 @@ void CodeGen::visit(ASTFor &node)
     {
         if(name_index_scope.contains(node.get_cond()->get_second()))
         {
-            second = name_index[node.get_cond()->get_second()].first;
+            second = name_index_scope[node.get_cond()->get_second()].first;
         } else {
             second = name_index[node.get_cond()->get_second()].first;
         }

@@ -1,4 +1,3 @@
-
 int isprime(int i)
 {
     int res = 1;
@@ -27,10 +26,11 @@ int main()
     int count = 0;
     int isprimenum = 0;
     ReadLine(n);
+
     for(int i = 2; count < n; i++)
     {
         isprimenum = isprime(i);
-
+        
         if(isprimenum == 1)
         {
             WriteLine(i);
