@@ -11,12 +11,21 @@
 #include <iostream>
 #include <cstdio>
 
-/*
-* Запуск examples после сборки:
-*  /build/bin$ ./app --dump-tokens -f ../../examples/(nod\substr\test).cs
-*/
-
 #define VERSION "0.0.1"
+
+std::string exec(const char* cmd) {
+    FILE* pipe = popen(cmd, "r");
+    if (!pipe) return "ERROR";
+    char buffer[128];
+    std::string result = "";
+    while(!feof(pipe)) {
+        if(fgets(buffer, 128, pipe) != NULL)
+            result += buffer;
+    }
+    pclose(pipe);
+    return result;
+}
+
 
 int main (int argc, const char * argv []) {
 
@@ -87,11 +96,17 @@ int main (int argc, const char * argv []) {
     if (dump_ast || xml_file != "") {
         cs_lang::dump_ast(parse_result.m_program, xml_file, dump_ast);
     }
-    std::ofstream stream(fileout);
-    CodeGen code_generator(stream, filepath, fileout);
+    std::ofstream stream(fileout+".ll");
+    CodeGen code_generator(stream, filepath, fileout+".ll");
     parse_result.m_program->accept(code_generator);
     stream.close();
-    
+    std::string llc_command = "llc " + fileout + ".ll" + " && clang -o " + fileout + " " + fileout + ".s";
+
+    exec(llc_command.c_str());
+    std::string rem_llc = fileout + ".ll";
+    std::remove(rem_llc.c_str());
+    std::string rem_s = fileout + ".s";
+    std::remove(rem_s.c_str());
     if(dump_asm) {    
         std::string line;
         std::ifstream ll(fileout);
