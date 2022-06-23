@@ -104,9 +104,9 @@ int main (int argc, const char * argv []) {
 
     exec(llc_command.c_str());
     std::string rem_llc = fileout + ".ll";
-    std::remove(rem_llc.c_str());
+    //std::remove(rem_llc.c_str());
     std::string rem_s = fileout + ".s";
-    std::remove(rem_s.c_str());
+    //std::remove(rem_s.c_str());
     if(dump_asm) {    
         std::string line;
         std::ifstream ll(fileout);

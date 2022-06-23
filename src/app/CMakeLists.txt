@@ -124,4 +124,3 @@ target_link_libraries(${target_name} semanticlib)
 target_link_libraries(${target_name} optimizerlib)
 target_link_libraries(${target_name} codegen)
 
-
